@@ -1,0 +1,40 @@
+@theme {
+  --color-void:         #030A10;
+  --color-ink:          #0B141A;
+  --color-ink-raised:   #14212A;
+  --color-slate:        #1E323C;
+
+  --color-ember:        #FB5000;
+  --color-ember-bright: #FFA958;
+  --color-ember-deep:   #A82208;
+
+  --color-rune:         #2DE0E4;
+  --color-rune-deep:    #0A7C99;
+  --color-rune-dim:     #0C2B34;
+
+  --color-bone:         #E6E1D3;
+  --color-bone-dim:     #96A0A0;
+  --color-white-hot:    #FFFBD7;
+
+  /* semantic aliases — components use ONLY these */
+  --color-enemy:        var(--color-ember);
+  --color-player:       var(--color-rune);
+  --color-energy:       var(--color-white-hot);
+  --color-selected:     var(--color-ember);
+  --color-danger:       var(--color-ember);
+  --color-locked:       var(--color-bone-dim);
+
+  --font-display:  "Cinzel", serif;
+  --font-body:     "Barlow", system-ui, sans-serif;
+  --font-hud:      "Barlow Condensed", sans-serif;
+
+  --radius-panel:  2px;
+  --border-panel:  2px;
+
+  --text-title:  clamp(3rem, 7vw, 5.5rem);
+  --text-menu:   1.5rem;
+  --text-screen: 1.5rem;
+  --text-body:   0.875rem;
+  --text-hud:    0.6875rem;
+  --text-hero:   3rem;
+}
