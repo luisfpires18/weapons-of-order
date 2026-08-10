@@ -65,15 +65,15 @@ Exact pathfinding tie-break rules must eventually be deterministic, but the exac
 
 ## 5. Movement Speed
 
-Movement Speed controls how quickly Units traverse adjacent hexes / the delay and playback timing between movement hops.
+Movement Speed remains a universal stat for future extensibility.
 
-For now there is only one inherent distinction:
+For v1, there is only one inherent distinction:
 - non-Mounted Units use standard movement speed
 - Mounted Units are slightly faster
 
-Exact numerical values are balance data and remain unresolved.
+Exact numerical values remain tunable.
 
-Do not currently add inherent movement-speed categories or item/trait modifiers unless explicitly approved later.
+Do not currently invent extra movement-speed tiers, equipment penalties, or item/trait movement modifiers unless explicitly approved later.
 
 ## 6. Default targeting
 
@@ -93,7 +93,7 @@ If the closest enemy is completely surrounded or otherwise unreachable, skip it 
 
 Ranged Units target the closest enemy within their weapon's hex range.
 
-They do not require a free adjacent hex beside the enemy and may attack over/interact past frontline Units according to range.
+They do not require a free adjacent hex beside the enemy and may attack over frontline Units according to range.
 
 ## 7. Retargeting and pursuit
 
@@ -134,41 +134,192 @@ Default behavior remains nearest-valid-enemy unless an explicit creator-authored
 
 No exact special targeting rules are currently canonized.
 
-## 10. Core combat stats
+## 10. Core combat stats and equipment totals
 
 Universal stats are deliberately limited to:
+- HP
+- Power
+- Defense
+- Attack Interval
+- Critical Chance
+- Movement Speed
+
+Final combat stats are built from the Unit's base stats plus equipped item contributions.
+
+Conceptually:
+`Final Stat = Unit Base + Weapon Modifiers + Armor Modifiers`
 
 ### HP
-Maximum/current health.
+
+Units have base HP. Armor and other approved equipment may add HP.
+
+Current armor slots:
+- Head
+- Shoulders
+- Chest
+- Gloves
+- Legs
+- Boots
+
+Armor-slot stats add together normally.
 
 ### Power
-Single offensive scaling stat.
 
-Do not split into Attack Power and Special Power.
+Power is the single offensive scaling stat.
 
-Physical-looking and Rune-powered attacks may both scale from Power using attack-specific formulas.
+Do not split it into Attack Power and Special Power.
+
+Current v1 tuning baseline:
+- 1 Power = 5 raw auto-attack damage before attack coefficients, criticals, and Defense.
+
+This `5` is a balance value, not a sacred permanent constant.
 
 ### Defense
-Single general defensive stat for now.
+
+Defense is a single general mitigation stat.
 
 Defense is intentionally hard to obtain and comes heavily from equipped armor.
 
-Do not create separate universal Armor and Magic Resistance stats unless explicitly approved later.
+Do not create separate Armor and Magic Resistance stats.
 
-Exact mitigation formula remains unresolved.
+Current v1 mitigation curve:
+`Damage Reduction = Defense / (Defense + 100)`
+
+The `100` denominator is a tunable balance constant.
+
+Examples:
+- 3 Defense ~= 2.9% reduction
+- 10 Defense ~= 9.1%
+- 25 Defense = 20%
+- 50 Defense ~= 33.3%
+- 100 Defense = 50%
+
+This diminishing-return curve prevents easy immunity while allowing every point of rare Defense to matter.
 
 ### Attack Interval
-Actual time between automatic attacks. Lower values attack faster.
+
+Attack Interval is the actual time between automatic attacks. Lower values attack faster.
+
+A Unit has a base Attack Interval, but final interval is influenced by:
+- armor class/weight
+- weapon weight/handling
+- one-handed / dual-wield / two-handed characteristics where authored
+
+Structural rule:
+`Final Attack Interval = Unit Base Interval + approved armor/weapon modifiers`
+
+Exact Light/Medium/Heavy and weapon modifiers remain tunable content/balance data.
+
+Heavier armor and heavier/two-handed weapons may generally increase interval; lighter or faster weapon setups may reduce it.
+
+Do not hardcode every armor+weapon combination as a separate combat rule.
+
+An eventual minimum Attack Interval/floor is required to prevent pathological stacking, but the exact floor is not yet locked.
 
 ### Critical Chance
-Universal chance for critical attacks.
 
-Critical Damage is not currently a separate universal stat.
+Critical Chance is additive from Unit/equipment sources where authored.
+
+Current global critical multiplier:
+- 2x raw attack damage
+
+Critical Damage is not a separate universal stat.
 
 ### Movement Speed
-Controls adjacent-hex traversal timing. Mounted is slightly faster than non-Mounted for now.
 
-## 11. Non-core mechanics
+Movement Speed remains present for future systems. For current v1, Mounted is simply somewhat faster than non-Mounted.
+
+## 11. Damage calculation order
+
+Current v1 attack calculation order:
+
+1. Build final Power from Unit + equipment.
+2. Convert Power to raw auto damage using the global Power scale.
+3. Apply the attack coefficient, such as Heavy 2.5x.
+4. If the attack crits, multiply raw damage by 2x.
+5. Apply Defense mitigation.
+6. Round final damage to the nearest whole number.
+7. A successful damaging hit deals at least 1 damage.
+
+Conceptually:
+`Raw Auto = Final Power * 5`
+
+`Raw Attack = Raw Auto * Attack Coefficient`
+
+`Raw Critical = Raw Attack * 2` when critical
+
+`Final Damage = round(Raw CriticalOrNormal * (1 - Defense/(Defense+100)))`
+
+Then clamp a successful damaging hit to a minimum of 1 damage.
+
+There is currently no Physical/Magical defensive split. Fire, sword, Mystic, and other attacks may differ by effects and coefficients, but they use the same Power/Defense foundation unless a future explicit mechanic says otherwise.
+
+## 12. Heavy attacks, criticals, and Energy
+
+There is one combat resource only.
+
+Energy range:
+- 0 to 100
+
+### Energy generation
+
+Current v1 rule:
+- each successful auto attack grants +10 Energy to the attacker
+- critting an auto does not grant extra Energy
+- being hit does not grant Energy
+- movement does not grant Energy
+- Energy does not overflow past 100
+
+At 100, the Unit's next eligible 100-Energy attack is performed and Energy resets to 0.
+
+The exact +10 value is tunable later, but this is the current implementation baseline.
+
+### Normal / L0 Dormant
+
+At 100 Energy, perform a Heavy Attack.
+
+Current ordinary Heavy coefficient:
+- 2.5x normal auto raw damage
+
+Example before Defense:
+- normal hit 50
+- Heavy 125
+- Heavy crit 250
+
+Autos and ordinary Heavy attacks can crit.
+
+### L1 Conduit
+
+At 100 Energy, the Rune transforms the ordinary Heavy Attack into a Rune-powered Heavy/Special Attack.
+
+Example concept:
+- normal Heavy Slash
+- Fire Conduit -> Heavy Fire Slash
+
+The ordinary 2.5x Heavy baseline is the current starting point, but exact Rune-specific coefficients/effects may later modify it.
+
+Normal auto attacks remain primarily mundane at L1 unless a specific Rune rule says otherwise.
+
+### L2 Aspect
+
+At L2, Rune power also transforms normal auto attacks.
+
+Therefore:
+- auto attacks become Rune-infused/Rune-powered
+- the 100-Energy attack remains a larger/stronger Rune special
+
+Example Fire pattern:
+`Fire auto -> Fire auto -> Fire auto -> 100 Energy -> stronger Fire special`
+
+Exact Rune-specific L2 auto/special effects remain to be authored.
+
+### L3
+
+Combat behavior intentionally remains undefined.
+
+Do not invent it.
+
+## 13. Non-core mechanics
 
 Do not currently add these as universal stats:
 - Dodge
@@ -183,43 +334,7 @@ Do not currently add these as universal stats:
 
 They may later exist as equipment, shield, class, Rune, buff/debuff, or attack-specific mechanics.
 
-## 12. Energy and attack progression
-
-There is one combat resource only.
-
-Energy range:
-- 0 to 100
-
-Exact generation rules are not yet locked.
-
-### Normal / L0 Dormant
-At 100 Energy, perform a Heavy Attack.
-
-### L1 Conduit
-At 100 Energy, the Rune transforms the ordinary Heavy Attack into a Rune-powered Heavy/Special Attack.
-
-Example concept:
-- normal Heavy Slash
-- Fire Conduit -> Heavy Fire Slash
-
-Normal auto attacks remain primarily mundane at L1 unless a specific Rune rule says otherwise.
-
-### L2 Aspect
-At L2, Rune power also transforms normal auto attacks.
-
-Therefore:
-- auto attacks become Rune-infused/Rune-powered
-- the 100-Energy attack remains a larger/stronger Rune special
-
-Example Fire pattern:
-`Fire auto -> Fire auto -> Fire auto -> 100 Energy -> stronger Fire special`
-
-### L3
-Combat behavior intentionally remains undefined.
-
-Do not invent it.
-
-## 13. Reserves
+## 14. Reserves
 
 Reserves are prepared before battle in an ordered queue.
 
@@ -265,7 +380,7 @@ All reinforcements enter from their assigned rear-row entry point and move norma
 
 This makes Mounted reinforcement speed meaningful.
 
-## 14. Battle end
+## 15. Battle end
 
 A side is not defeated merely because all currently active Units are dead if valid reserves remain available to enter.
 
@@ -274,7 +389,7 @@ Current structural rule:
 
 Exact edge cases involving permanently blocked reserves, timeout, stalemate, or overtime are not yet canonized.
 
-## 15. Server authority and deterministic simulation
+## 16. Server authority and deterministic simulation
 
 Combat is server-authoritative.
 
@@ -289,7 +404,7 @@ Conceptual flow:
 
 The same authoritative starting snapshot and RNG state must produce the same simulation result.
 
-## 16. Pre-resolved computation and progressive reveal
+## 17. Pre-resolved computation and progressive reveal
 
 Weapons of Order does not need TFT's wall-clock live server simulation merely because TFT uses it.
 
@@ -304,7 +419,7 @@ For an early MVP, returning the complete event log at once is acceptable if simp
 
 Do not expose the simulation outcome to gameplay logic on the client as authoritative state.
 
-## 17. Replays and asynchronous combat
+## 18. Replays and asynchronous combat
 
 Because the authoritative battle is represented by a snapshot/seed/event timeline, the model naturally supports deterministic replays and asynchronous battles.
 
@@ -312,7 +427,7 @@ A defending player does not need to be online for the server to resolve a battle
 
 Exact PvP/session architecture remains a separate future system.
 
-## 18. Future large-scale armies
+## 19. Future large-scale armies
 
 The current tactical battlefield uses individual Units/Heroes.
 
@@ -322,25 +437,24 @@ Such aggregate formations are allowed to contain mixed equipment/Rune compositio
 
 The exact way mixed cohorts, special Rune wielders, casualties, and aggregate stats behave is deferred.
 
-## 19. Intentionally unresolved
+## 20. Intentionally unresolved
 
 Do not silently decide:
-- exact damage formula
-- exact Defense mitigation formula
-- physical/magical damage taxonomy
-- default crit multiplier
-- exact Energy generation
-- Heavy Attack coefficient
-- which attacks can crit
+- exact Unit/equipment stat budgets
+- exact Light/Medium/Heavy Attack Interval modifiers
+- exact weapon-weight Attack Interval modifiers
+- minimum Attack Interval floor
+- exact weapon ranges by weapon type
+- exact Rune-specific L1/L2 coefficients and effects
 - shield Block mechanics
 - Dodge mechanics
-- exact movement timing
+- exact movement timing values
 - deterministic pathfinding tie-breaks
 - deterministic equal-distance target tie-breaks
-- exact weapon ranges by weapon type
 - exact special targeting overrides
 - exact reinforcement delay
 - timeout/overtime/stalemate rules
-- exact Rune-specific L1/L2 attacks
 - exact progressive event delivery/network protocol
 - large-scale Formation/Squad combat simulation
+
+Current numeric combat baselines such as Power scale 5, Defense constant 100, +10 Energy, 2.5x Heavy, and 2x Crit are v1 balance values and may be iterated without changing the underlying system structure.
