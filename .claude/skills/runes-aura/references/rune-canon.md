@@ -2,6 +2,8 @@
 
 This file records current decisions from the creator and overrides conflicting older draft wording.
 
+Weapon type, slot, dual-wield, and paired Runeforged loadout rules are centralized in `.claude/skills/units/references/weapon-registry.md`.
+
 ## 1. Rune taxonomy
 
 A **Rune Family** is a classification.
@@ -90,6 +92,8 @@ Weapons of Chaos and Order are the exceptional high-tier case involving:
 - plus Chaos or Order
 
 Do not generalize this exception into ordinary multi-Rune weapons.
+
+For a two-item Runeforged loadout, both equipped 1-slot weapons must carry the same Rune identity and the same weapon category/tier. They behave as one Rune set for the wielder. See the weapon registry for the complete pairing rules.
 
 ## 4. Rune uniqueness and availability
 
@@ -250,7 +254,20 @@ Chaos:
 Order:
 - L3 = Ascendant
 
-## 9. Aura progression and mastery
+## 9. Aura progression and wielder mastery
+
+Aura mastery belongs to the **wielder, per Rune identity**.
+
+It is not independent mastery stored on each individual weapon object.
+
+Conceptually:
+`Wielder + Rune Identity -> Aura Mastery`
+
+The equipped weapon category determines the maximum Aura Level that the wielder's mastery can manifest through that weapon/set.
+
+Changing to another compatible weapon of the same Rune does not require mastering that individual object again.
+
+For a valid two-item Runeforged set, both weapons always manifest the same current Aura Level and act as one Rune set for that wielder. There is no separate left-hand and right-hand mastery state.
 
 The Aura ladder is:
 
@@ -262,18 +279,18 @@ No active Rune power is being channeled yet.
 L0 is a valid Runeforged state, not a failed forge.
 
 ### L1 Conduit
-Reached through mastery/use.
+Reached through the wielder's mastery/use of that Rune identity.
 
-The weapon channels the Rune's active power.
+At L1, the wielder masters and manifests the **weapon's Aura**. The active supernatural power is still primarily centered on/channels through the weapon or weapon set.
 
 Enhanced Weapons can reach this level.
 
 ### L2 Aspect
-Only Artifact-or-higher weapons can reach this level.
+Only Artifact-or-higher weapons can manifest this level.
 
-Requires the Artifact blood-bound category first, then sufficient mastery to awaken Aspect.
+Requires the Artifact blood-bound category first, plus sufficient wielder mastery for that Rune identity.
 
-Aspect transforms the wielder according to the Rune's nature.
+At L2, the **weapon's Aura begins interacting with the wielder's own Aura**, creating and empowering the wielder-side manifestation. This is why Aspect can transform the wielder according to the Rune's nature rather than only changing the weapon.
 
 The detailed source uses staged 25/50/75/100% manifestation concepts. Treat those as current draft detail, not necessarily exact game progression UI unless adopted by the current game design.
 
@@ -289,7 +306,7 @@ Exact soul consequences and Order/Chaos gameplay costs remain WIP.
 
 Runeforging operations can go badly and destroy the weapon.
 
-Aura awakening through mastery does NOT itself randomly destroy the weapon.
+Aura awakening through wielder mastery does NOT itself randomly destroy the weapon.
 
 Do not apply Runeforging failure chance to:
 - L0 -> L1 mastery awakening

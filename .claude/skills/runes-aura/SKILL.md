@@ -1,6 +1,6 @@
 ---
 name: runes-aura
-description: Weapons of Order Runes, Runestones, Rune families, fusion/derivation, conditioned weapon transformations, Rune-class changes, Aura L0-L3, Conduit, Aspect, Dreadform, Ascendant, and Rune mastery. Use whenever exact Rune identities or Aura behavior matter.
+description: Weapons of Order Runes, Runestones, Rune families, fusion/derivation, conditioned weapon transformations, Rune-class changes, Aura L0-L3, Conduit, Aspect, Dreadform, Ascendant, wielder Rune mastery, and Runeforged weapon-set behavior. Use whenever exact Rune identities or Aura behavior matter.
 ---
 
 # Runes & Aura
@@ -8,6 +8,8 @@ description: Weapons of Order Runes, Runestones, Rune families, fusion/derivatio
 Read `references/rune-canon.md` first.
 
 Read `references/rune-registry.md` when exact Rune names, families, fusion results, uniqueness, rarity, or current availability matter.
+
+Read `.claude/skills/units/references/weapon-registry.md` when Aura/mastery interacts with weapon types, dual wielding, paired Runeforged weapons, weapon categories, or loadout compatibility.
 
 ## Authority
 
@@ -23,6 +25,7 @@ If a point is unresolved, preserve it as WIP/configurable rather than completing
 - Rune family vs Rune identity.
 - Weapon category vs Aura Level.
 - Runeforging vs mastery awakening.
+- Weapon object vs wielder Rune mastery.
 
 ## Core progression
 
@@ -32,6 +35,10 @@ Category ceilings:
 - Enhanced -> max L1.
 - Artifact -> max L2.
 - Chaos/Order -> max L3.
+
+Aura mastery belongs to the wielder per Rune identity. A compatible weapon/set manifests the wielder's existing mastery up to that weapon category's ceiling.
+
+For a valid two-item Runeforged set, both weapons use the same Rune identity, same weapon category, and same current Aura Level. They behave as one Rune set for that wielder rather than maintaining independent hand-by-hand mastery.
 
 Basic Runeforging can physically reshape a weapon at L0 when its Rune family has an established conditioned form.
 
