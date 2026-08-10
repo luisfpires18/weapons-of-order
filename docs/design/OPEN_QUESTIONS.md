@@ -4,17 +4,21 @@ These are intentionally unresolved. Existing or historical code must not silentl
 
 Only resolve an item when the creator explicitly decides it.
 
-## Combat math
+## Combat math and equipment tuning
 
-- Exact damage formula combining Unit Power, weapon, class, and attack coefficients?
-- Exact Defense mitigation formula?
-- Whether attacks use formal Physical/Magical damage types or a different taxonomy?
-- Default critical multiplier?
-- Exact Energy generation rules?
-- Exact Heavy Attack coefficient/scaling?
-- Which attacks can crit?
+Combat Math v1 is structurally locked in `.claude/skills/combat/`.
+
+Still unresolved:
+- Exact Unit base-stat budgets by fixed star tier?
+- Exact weapon stat budgets?
+- Exact armor stat budgets by slot/class?
+- Exact Light/Medium/Heavy Attack Interval modifiers?
+- Exact weapon-weight/handling Attack Interval modifiers?
+- Minimum Attack Interval floor?
 - Whether shields use Block chance/effectiveness and how it works?
 - Whether Dodge becomes a class/effect mechanic and how it works?
+
+Current Power scale, Defense constant, Energy gain, Heavy coefficient, and Crit multiplier are v1 tunable balance values rather than permanent sacred numbers.
 
 ## Combat rules still open
 
@@ -33,8 +37,6 @@ Only resolve an item when the creator explicitly decides it.
 - Exact kingdom rosters. Creator-defined only.
 - Exact Hero roster. Creator-defined only.
 - Exact specialization/class names and required loadouts. Creator-defined only.
-- Exact Unit base-stat budgets by fixed star tier.
-- Which stats come primarily from Unit identity versus weapon/armor?
 - Acquisition/recruitment rules?
 - Progression beyond fixed star tier, if any?
 - Final Rune-family combat class names beyond explicitly established examples such as Wizard and Shapeshifter?
@@ -52,7 +54,7 @@ Synergies stay in separate content definitions from Unit definitions.
 
 - Exact resource costs?
 - Common/Rare/Epic quality thresholds and stat effects?
-- Armor protection/weight/mobility formulas?
+- Armor protection/weight/mobility balance values?
 - Runeforging destruction chances?
 - Rune Extraction cost/risk?
 - Blacksmith progression/mastery curve?
