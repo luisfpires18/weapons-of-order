@@ -8,13 +8,17 @@ Only resolve an item when the creator explicitly decides it.
 
 Combat Math v1 is structurally locked in `.claude/skills/combat/`.
 
+Weapon/loadout structure is locked in `.claude/skills/units/references/weapon-registry.md`.
+
 Still unresolved:
 - Exact Unit base-stat budgets by fixed star tier?
-- Exact weapon stat budgets?
+- Exact weapon Power/Crit budgets?
+- Exact Light/Medium/Heavy weight assignment for every weapon?
 - Exact armor stat budgets by slot/class?
-- Exact Light/Medium/Heavy Attack Interval modifiers?
-- Exact weapon-weight/handling Attack Interval modifiers?
+- Exact Light/Medium/Heavy armor Attack Interval modifiers?
+- Exact weapon-weight/loadout Attack Interval modifiers?
 - Minimum Attack Interval floor?
+- Specific weapon range exceptions beyond the 1-hex melee / 3-hex Ranged-family defaults?
 - Whether shields use Block chance/effectiveness and how it works?
 - Whether Dodge becomes a class/effect mechanic and how it works?
 
@@ -25,7 +29,6 @@ Current Power scale, Defense constant, Energy gain, Heavy coefficient, and Crit 
 - Exact movement timing values for Mounted vs non-Mounted Units?
 - Deterministic pathfinding tie-break when multiple shortest hex routes exist?
 - Deterministic target tie-break when multiple enemies are equally close/valid?
-- Exact weapon ranges by weapon type?
 - Exact special targeting overrides such as future Assassin-style behavior?
 - Exact reinforcement entry delay?
 - Timeout/overtime/stalemate behavior?
@@ -40,6 +43,13 @@ Current Power scale, Defense constant, Energy gain, Heavy coefficient, and Crit 
 - Acquisition/recruitment rules?
 - Progression beyond fixed star tier, if any?
 - Final Rune-family combat class names beyond explicitly established examples such as Wizard and Shapeshifter?
+
+## Weapon crafting / paired Runeforging
+
+- Exact slot cost for weapon types not explicitly fixed by the weapon registry?
+- Exact failure/destruction behavior when two weapons are Runeforged as one paired operation?
+- Whether paired Runeforging changes success odds/cost compared with two independent operations?
+- Exact weapon-specific special attacks, if any?
 
 ## Synergies
 
@@ -62,8 +72,11 @@ Synergies stay in separate content definitions from Unit definitions.
 
 ## Runes and Aura
 
+Aura mastery ownership is now structurally locked: mastery belongs to the wielder per Rune identity, and compatible weapons manifest that mastery up to their category ceiling.
+
+Still unresolved:
 - Exact L1/L2 combat effects per Rune?
-- Exact mastery progression to awaken Aura Levels?
+- Exact mastery progression/thresholds to awaken Aura Levels?
 - Remaining purified/corrupted Rune definitions?
 - Full Runestone color/visual registry?
 - L3 Dreadform/Ascendant combat behavior?
