@@ -26,14 +26,25 @@ Current Power scale, Defense constant, Energy gain, Heavy coefficient, and Crit 
 
 ## Combat rules still open
 
+Targeting foundation is locked:
+- closest valid enemy first;
+- on equal distance, prefer lower final Defense / less-armored target;
+- distance always overrides the armor preference;
+- exact-equal candidates require no further authored gameplay priority for v1.
+
+Equal shortest paths likewise require no additional gameplay preference; deterministic pathfinder ordering is implementation detail.
+
+Still unresolved:
 - Exact movement timing values for Mounted vs non-Mounted Units?
-- Deterministic pathfinding tie-break when multiple shortest hex routes exist?
-- Deterministic target tie-break when multiple enemies are equally close/valid?
 - Exact special targeting overrides such as future Assassin-style behavior?
 - Exact reinforcement entry delay?
-- Timeout/overtime/stalemate behavior?
-- Battle-end edge cases involving reserves that remain blocked indefinitely?
+- Timeout/overtime/stalemate behavior when living Units or reserves cannot make progress?
 - Exact progressive event-delivery/network protocol for competitive multiplayer?
+
+Battle-end foundation is locked:
+- defeat occurs only when every active Unit and every reserve Unit is dead;
+- a living reserve blocked from entering is not defeated and prevents army defeat;
+- simultaneous elimination of both armies is a Draw.
 
 ## Units and classes
 
