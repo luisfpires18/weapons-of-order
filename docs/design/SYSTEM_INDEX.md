@@ -25,10 +25,12 @@ This is the routing map for game-design context.
 | Targeting/range foundation | LOCKED FOUNDATION | `.claude/skills/combat/` |
 | Active deployment + reserves | LOCKED FOUNDATION | `.claude/skills/combat/` |
 | Core combat stats | LOCKED FOUNDATION | `.claude/skills/combat/` |
-| Energy / Heavy / L1 / L2 attack progression | LOCKED FOUNDATION | `.claude/skills/combat/` |
+| Damage/Defense/Crit/Heavy math v1 | LOCKED FOUNDATION | `.claude/skills/combat/` |
+| Energy generation + L0/L1/L2 attack progression | LOCKED FOUNDATION | `.claude/skills/combat/` |
+| Attack Interval structure | LOCKED FOUNDATION | `.claude/skills/combat/`; exact modifiers still tuning/WIP |
 | Server-authoritative deterministic battle/replay model | LOCKED FOUNDATION | `.claude/skills/combat/` |
-| Damage & Defense formulas | NOT DESIGNED | `OPEN_QUESTIONS.md` |
-| Exact Energy generation/combat coefficients | NOT DESIGNED | `OPEN_QUESTIONS.md` |
+| Weapon stat/type definitions | PARTIAL / WIP | combat structure exists; authored weapon system still needed |
+| Armor combat balance by slot/class | PARTIAL / WIP | armor slots/Defense structure exist; exact values still needed |
 | Synergies | PARTIAL / WIP | separate future system; no skill yet |
 | Unit acquisition/progression | NOT DESIGNED | `OPEN_QUESTIONS.md` |
 | Economy beyond crafting foundations | NOT DESIGNED | `OPEN_QUESTIONS.md` |
