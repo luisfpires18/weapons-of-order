@@ -61,7 +61,7 @@ This intentionally permits body blocking and **melee jail**, where a melee Unit 
 
 When a target is outside attack range, the Unit paths toward a valid attack position one adjacent hex at a time using the shortest currently valid route.
 
-Exact pathfinding tie-break rules must eventually be deterministic, but the exact tie-break is not yet canonized.
+When multiple valid routes are equally short, there is no additional authored gameplay preference between them. The deterministic simulation/pathfinder may choose consistently as an implementation detail; do not invent a tactical priority such as always preferring left/right/up/down.
 
 ## 5. Movement Speed
 
@@ -79,7 +79,12 @@ Do not currently invent extra movement-speed tiers, equipment penalties, or item
 
 Default AI prioritizes the **closest valid enemy** measured by hex distance.
 
-Target selection must ultimately use deterministic tie-breaking when multiple enemies are equally valid/close.
+Target priority is:
+1. closest valid enemy by hex distance;
+2. if multiple enemies are equally closest, prefer the enemy with **lower final Defense** as the current mechanical expression of being less armored;
+3. if distance and Defense are both equal, there is no additional authored gameplay priority. The deterministic simulation may choose consistently as an implementation detail.
+
+Distance always has priority over armor/Defense. A more heavily armored enemy that moves closer than a lightly armored enemy becomes the target normally.
 
 ### Melee
 
@@ -99,7 +104,7 @@ They do not require a free adjacent hex beside the enemy and may attack over fro
 
 ### Death / untargetable
 
-If a target dies or becomes untargetable/off-board, the attacker immediately drops that target and selects the new closest valid enemy.
+If a target dies or becomes untargetable/off-board, the attacker immediately drops that target and selects the new closest valid enemy using the same targeting priority.
 
 ### Target leaves attack range
 
@@ -364,6 +369,8 @@ If that hex is occupied:
 - that reserve waits off-board
 - it does not magically choose another spawn hex
 
+A blocked reserve remains alive while waiting.
+
 ### Multiple open slots
 
 Queue order determines which reserves are called first, but battlefield blockage may alter actual arrival order.
@@ -382,12 +389,18 @@ This makes Mounted reinforcement speed meaningful.
 
 ## 15. Battle end
 
-A side is not defeated merely because all currently active Units are dead if valid reserves remain available to enter.
+An army is defeated **only when every Unit belonging to that battle is dead**, including:
+- all active Units;
+- all reserve Units.
 
-Current structural rule:
-- battle ends when a side has no active Units and no remaining reserve capable of continuing the army.
+Therefore:
+- zero active Units does not mean defeat while any reserve is still alive;
+- a living reserve whose assigned entry hex is blocked is still alive and prevents defeat;
+- inability to enter the battlefield does not count as death and does not itself cause defeat.
 
-Exact edge cases involving permanently blocked reserves, timeout, stalemate, or overtime are not yet canonized.
+If both armies have every remaining Unit die as part of the same authoritative resolution, the battle result is a **Draw**.
+
+Timeout/stalemate handling for situations where living Units or reserves can no longer make progress remains a separate unresolved rule. A future timeout rule must not silently redefine a living blocked reserve as dead.
 
 ## 16. Server authority and deterministic simulation
 
@@ -449,12 +462,12 @@ Do not silently decide:
 - shield Block mechanics
 - Dodge mechanics
 - exact movement timing values
-- deterministic pathfinding tie-breaks
-- deterministic equal-distance target tie-breaks
 - exact special targeting overrides
 - exact reinforcement delay
 - timeout/overtime/stalemate rules
 - exact progressive event delivery/network protocol
 - large-scale Formation/Squad combat simulation
+
+Equal shortest paths and exact-equal targeting candidates do not require additional authored gameplay priorities for v1; deterministic implementation ordering is sufficient.
 
 Current numeric combat baselines such as Power scale 5, Defense constant 100, +10 Energy, 2.5x Heavy, and 2x Crit are v1 balance values and may be iterated without changing the underlying system structure.
