@@ -17,9 +17,12 @@ This is the routing map for game-design context.
 | Runeforging & Artifact blood bond | LOCKED FOUNDATION | `.claude/skills/blacksmithing/` |
 | Rune taxonomy & registry | LOCKED FOUNDATION | `.claude/skills/runes-aura/` |
 | Aura L0-L2 structure | LOCKED FOUNDATION | `.claude/skills/runes-aura/` |
+| Wielder Rune mastery + paired weapon Aura behavior | LOCKED FOUNDATION | `.claude/skills/runes-aura/`; `.claude/skills/units/references/weapon-registry.md` |
 | Chaos/Order L3 gameplay | DEFERRED / WIP | `.claude/skills/runes-aura/` |
 | Unit/Hero structure | LOCKED FOUNDATION | `.claude/skills/units/` |
 | Equipment-defined combat classes | LOCKED FOUNDATION | `.claude/skills/units/` |
+| Weapon taxonomy / slots / dual wield / Runeforged pair compatibility | LOCKED FOUNDATION | `.claude/skills/units/references/weapon-registry.md` |
+| Weapon stat budgets / exact weight assignments | PARTIAL / WIP | weapon structure locked; exact balance still open |
 | Battlefield/grid/deployment | LOCKED FOUNDATION | `.claude/skills/combat/` |
 | Movement/collision/pathing foundation | LOCKED FOUNDATION | `.claude/skills/combat/` |
 | Targeting/range foundation | LOCKED FOUNDATION | `.claude/skills/combat/` |
@@ -29,7 +32,6 @@ This is the routing map for game-design context.
 | Energy generation + L0/L1/L2 attack progression | LOCKED FOUNDATION | `.claude/skills/combat/` |
 | Attack Interval structure | LOCKED FOUNDATION | `.claude/skills/combat/`; exact modifiers still tuning/WIP |
 | Server-authoritative deterministic battle/replay model | LOCKED FOUNDATION | `.claude/skills/combat/` |
-| Weapon stat/type definitions | PARTIAL / WIP | combat structure exists; authored weapon system still needed |
 | Armor combat balance by slot/class | PARTIAL / WIP | armor slots/Defense structure exist; exact values still needed |
 | Synergies | PARTIAL / WIP | separate future system; no skill yet |
 | Unit acquisition/progression | NOT DESIGNED | `OPEN_QUESTIONS.md` |
@@ -56,7 +58,7 @@ Use normal docs when information is:
 - unresolved design tracking;
 - architecture that affects most work.
 
-Use future data/content files when information is primarily authored game content, such as exact kingdom rosters, specialization mappings, Rune records, or synergy records.
+Use future data/content files when information is primarily authored game content, such as exact kingdom rosters, specialization mappings, Rune records, weapon records, or synergy records.
 
 ## Update rule
 
