@@ -18,21 +18,23 @@ This is the routing map for game-design context.
 | Rune taxonomy & registry | LOCKED FOUNDATION | `.claude/skills/runes-aura/` |
 | Aura L0-L2 structure | LOCKED FOUNDATION | `.claude/skills/runes-aura/` |
 | Chaos/Order L3 gameplay | DEFERRED / WIP | `.claude/skills/runes-aura/` |
-| Unit/Hero structure | LOCKED FOUNDATION | `.claude/skills/units-combat/` |
-| Equipment-defined combat classes | LOCKED FOUNDATION | `.claude/skills/units-combat/` |
-| Core combat stats | LOCKED FOUNDATION | `.claude/skills/units-combat/` |
-| Energy / Heavy / L1 / L2 attack progression | LOCKED FOUNDATION | `.claude/skills/units-combat/` |
-| Battlefield/grid/formation | NOT DESIGNED | `OPEN_QUESTIONS.md` |
-| Targeting | NOT DESIGNED | `OPEN_QUESTIONS.md` |
-| Movement behavior | NOT DESIGNED | `OPEN_QUESTIONS.md` |
-| Range rules | NOT DESIGNED | `OPEN_QUESTIONS.md` |
+| Unit/Hero structure | LOCKED FOUNDATION | `.claude/skills/units/` |
+| Equipment-defined combat classes | LOCKED FOUNDATION | `.claude/skills/units/` |
+| Battlefield/grid/deployment | LOCKED FOUNDATION | `.claude/skills/combat/` |
+| Movement/collision/pathing foundation | LOCKED FOUNDATION | `.claude/skills/combat/` |
+| Targeting/range foundation | LOCKED FOUNDATION | `.claude/skills/combat/` |
+| Active deployment + reserves | LOCKED FOUNDATION | `.claude/skills/combat/` |
+| Core combat stats | LOCKED FOUNDATION | `.claude/skills/combat/` |
+| Energy / Heavy / L1 / L2 attack progression | LOCKED FOUNDATION | `.claude/skills/combat/` |
+| Server-authoritative deterministic battle/replay model | LOCKED FOUNDATION | `.claude/skills/combat/` |
 | Damage & Defense formulas | NOT DESIGNED | `OPEN_QUESTIONS.md` |
+| Exact Energy generation/combat coefficients | NOT DESIGNED | `OPEN_QUESTIONS.md` |
 | Synergies | PARTIAL / WIP | separate future system; no skill yet |
 | Unit acquisition/progression | NOT DESIGNED | `OPEN_QUESTIONS.md` |
 | Economy beyond crafting foundations | NOT DESIGNED | `OPEN_QUESTIONS.md` |
 | Main game loop/modes | PARTIAL / WIP | broad autobattler direction only |
 | PvP / matchmaking / seasons | NOT DESIGNED | `OPEN_QUESTIONS.md` |
-| Large-scale war | DEFERRED | `GAME_VISION.md` |
+| Large-scale war/formations | DEFERRED | `GAME_VISION.md`; combat skill records only the current abstraction boundary |
 | Persistence/database/API | NOT DESIGNED | implementation architecture to follow system design |
 | Authentication/accounts | NOT DESIGNED | implementation architecture to follow product needs |
 | Roadmap | DEFERRED | rebuild after enough core systems are defined |

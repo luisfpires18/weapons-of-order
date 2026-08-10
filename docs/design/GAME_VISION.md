@@ -14,13 +14,15 @@ Forging and Runes are not secondary crafting systems. They are central to the id
 
 Combat is an **autobattler**.
 
-The player prepares Units, Heroes, weapons, armor, and positioning before combat. The battle itself is automatically resolved under game rules and presented through a deterministic battle log/state-transition style playback.
+The player prepares Units, Heroes, weapons, armor, positioning, and reserves before combat. Once battle begins, there are no equipment changes or manual casts that alter the outcome.
 
-Current rule:
-- no equipment changes during combat;
-- no manual skill casting that changes an already-resolved outcome.
+The tactical battlefield uses an **8x7 offset hex grid** with freeform deployment in each player's 4x7 half. The current v1 target is 8 active Units from a 16-Unit battle army, with ordered reserves entering from assigned rear-row entry points as active slots open.
 
-The exact battlefield, squad size, targeting, movement, range, and formulas are still being designed.
+Units body-block one another and path hex-by-hex. Default targeting is the nearest valid enemy, with melee requiring a reachable adjacent attack position. Mounted Units are slightly faster than non-Mounted Units for now.
+
+Combat is **server-authoritative and deterministic** from the authoritative starting snapshot/RNG state. The preferred architecture allows the server to resolve the battle faster than real time while the client progressively reveals/renders the resulting event timeline. The client is not authoritative for combat math, pathing, targeting, RNG, or reserve decisions.
+
+Exact combat formulas, Energy generation values, weapon-specific ranges, special targeting overrides, overtime/stalemate handling, and some networking details remain to be designed.
 
 ## Units and equipment
 
@@ -98,11 +100,9 @@ Do not invent synergy thresholds or bonuses yet.
 
 ## Scale
 
-Start with a small, understandable tactical battle system.
+Start with a small, understandable tactical battle system using individual Units/Heroes.
 
-A future larger war layer may represent very large armies, but the current autobattler should not be designed around simulating thousands of individual entities.
-
-If large-scale war is introduced later, formations/stacks/aggregate armies can be a separate system.
+A future larger war layer may represent very large armies through aggregate Formations/Squads. Those future formations may contain mixed weapon/Rune composition internally; the tactical system should not be distorted now to solve that deferred abstraction.
 
 ## Visual direction
 

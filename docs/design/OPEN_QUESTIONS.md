@@ -4,17 +4,6 @@ These are intentionally unresolved. Existing or historical code must not silentl
 
 Only resolve an item when the creator explicitly decides it.
 
-## Combat battlefield
-
-- Battlefield shape: grid, free movement, lanes, or another structure?
-- Squad size?
-- Deployment/formation rules?
-- Exact meaning of Movement Speed?
-- Collision, pathing, body-blocking, and movement around allies/enemies?
-- How Mounted movement differs from unmounted movement?
-- Range model and how melee/ranged Units acquire valid targets?
-- Target-selection rules and retargeting behavior?
-
 ## Combat math
 
 - Exact damage formula combining Unit Power, weapon, class, and attack coefficients?
@@ -26,6 +15,18 @@ Only resolve an item when the creator explicitly decides it.
 - Which attacks can crit?
 - Whether shields use Block chance/effectiveness and how it works?
 - Whether Dodge becomes a class/effect mechanic and how it works?
+
+## Combat rules still open
+
+- Exact movement timing values for Mounted vs non-Mounted Units?
+- Deterministic pathfinding tie-break when multiple shortest hex routes exist?
+- Deterministic target tie-break when multiple enemies are equally close/valid?
+- Exact weapon ranges by weapon type?
+- Exact special targeting overrides such as future Assassin-style behavior?
+- Exact reinforcement entry delay?
+- Timeout/overtime/stalemate behavior?
+- Battle-end edge cases involving reserves that remain blocked indefinitely?
+- Exact progressive event-delivery/network protocol for competitive multiplayer?
 
 ## Units and classes
 
@@ -65,6 +66,15 @@ Synergies stay in separate content definitions from Unit definitions.
 - Full Runestone color/visual registry?
 - L3 Dreadform/Ascendant combat behavior?
 - Final Chaos/Order soul mechanics and consequences?
+
+## Large-scale army layer
+
+- When/if individual tactical Units are aggregated into Formations/Squads?
+- How mixed mundane/Runeforged/Artifact weapon composition is represented inside a Formation?
+- How casualties choose which internal cohort/equipment is lost?
+- How special Rune wielders behave inside aggregated formations?
+
+Do not force formations to be homogeneous by Rune/loadout merely to simplify implementation.
 
 ## Game structure
 
