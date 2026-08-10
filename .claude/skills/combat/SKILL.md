@@ -20,12 +20,18 @@ Also read:
 - Each side deploys within its own 4x7 half.
 - One unit per hex; occupied hexes are impassable.
 - Default target is nearest valid enemy by hex distance.
+- If multiple enemies are equally closest, prefer the one with lower final Defense; distance always wins over this armor preference.
+- If distance and Defense are both equal, no additional authored gameplay priority is required for v1; deterministic implementation ordering is sufficient.
 - Melee requires a reachable adjacent attack position.
 - Ranged units do not need adjacent space and may attack over frontliners.
 - If a target leaves range, pursue one hex; if still out of range, retarget.
+- Multiple equally short paths have no authored tactical priority; deterministic pathfinder ordering is an implementation detail.
 - 8 active units and 16 total army slots are current v1 tunable values.
 - Reserves are ordered before combat, have preferred rear-row entry hexes, and enter after a short configurable delay when active slots open.
-- A blocked reserve waits; another reserve may enter if it has an open active slot and unblocked assigned entry.
+- A blocked reserve waits alive; another reserve may enter if it has an open active slot and unblocked assigned entry.
+- An army is defeated only when every active Unit and every reserve Unit is dead.
+- A living blocked reserve prevents defeat.
+- If both armies lose all remaining Units in the same authoritative resolution, the result is a Draw.
 
 ## Universal combat stats
 
@@ -103,7 +109,6 @@ Keep these unresolved unless the creator explicitly decides them:
 - weapon-specific range exceptions beyond registry defaults
 - exact Rune-specific L1/L2 combat effects
 - special targeting overrides
-- deterministic path/target tie-breaks
 - exact reinforcement delay
 - timeout/overtime/stalemate behavior
 - shield Block or Dodge mechanics
