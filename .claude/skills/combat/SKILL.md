@@ -1,6 +1,6 @@
 ---
 name: combat
-description: Weapons of Order autobattler battlefield, hex movement, collision, targeting, range, combat stats, damage math, Energy/Heavy/L1/L2 attack progression, deployment limits, reserves, and server-authoritative deterministic simulation. Use whenever work touches battle rules, pathing, targeting, replay architecture, reinforcement flow, or combat math.
+description: Weapons of Order autobattler battlefield, hex movement, collision, targeting, range, combat stats, damage math, Energy/Heavy/L1/L2 attack progression, weapon timing, deployment limits, reserves, and server-authoritative deterministic simulation. Use whenever work touches battle rules, pathing, targeting, replay architecture, reinforcement flow, weapon attack behavior, or combat math.
 ---
 
 # Combat
@@ -9,6 +9,7 @@ Read `references/combat-canon.md` before designing or implementing battle behavi
 
 Also read:
 - `.claude/skills/units/references/unit-canon.md` when Unit/Hero identity or Mounted matters.
+- `.claude/skills/units/references/weapon-registry.md` when weapon type, range, slot use, dual wield, weapon weight, shield behavior, or Runeforged weapon pairs matter.
 - `.claude/skills/runes-aura/references/rune-canon.md` when Aura changes attacks/classes.
 
 ## Core battlefield rules
@@ -54,6 +55,10 @@ Current tunable baseline:
 
 Attack Interval starts from the Unit's base value and is modified by armor class/weight and weapon weight/handling. Exact modifiers and the minimum interval floor remain tunable/unresolved.
 
+Weapon defaults are centralized in the weapon registry. Current v1 defaults include melee range 1 hex and Ranged-family range 3 hexes.
+
+For two equipped 1-slot weapons, both contribute full stats and autos alternate hands. Each alternating hand attack is a real auto for crit/Energy purposes.
+
 Armor slots currently used for additive item stats:
 - Head
 - Shoulders
@@ -93,8 +98,9 @@ L3 combat behavior is deferred.
 Keep these unresolved unless the creator explicitly decides them:
 - exact Unit/equipment stat budgets
 - exact armor/weapon Attack Interval modifiers
+- exact per-weapon Light/Medium/Heavy assignment
 - minimum Attack Interval floor
-- exact weapon ranges by weapon type
+- weapon-specific range exceptions beyond registry defaults
 - exact Rune-specific L1/L2 combat effects
 - special targeting overrides
 - deterministic path/target tie-breaks
