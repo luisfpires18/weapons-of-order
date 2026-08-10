@@ -1,13 +1,15 @@
 ---
 name: blacksmithing
-description: Weapons of Order blacksmithing, armor smithing, Runeforging, Enhanced/Artifact weapon progression, Rune Extraction, blood bonds, recoil, and forging risk. Use whenever work touches forging UI/gameplay, weapon or armor crafting, Runestones in the forge, Artifact creation, or blacksmith mastery.
+description: Weapons of Order blacksmithing, armor smithing, Runeforging, Enhanced/Artifact weapon progression, paired Runeforging, Rune Extraction, blood bonds, recoil, and forging risk. Use whenever work touches forging UI/gameplay, weapon or armor crafting, Runestones in the forge, Artifact creation, dual-weapon Runeforging, or blacksmith mastery.
 ---
 
 # Blacksmithing
 
 Read `references/blacksmith-canon.md` before designing or implementing this subsystem.
 
-Also read `.claude/skills/runes-aura/references/rune-canon.md` when the task depends on Rune/Aura rules.
+Also read:
+- `.claude/skills/runes-aura/references/rune-canon.md` when the task depends on Rune/Aura rules.
+- `.claude/skills/units/references/weapon-registry.md` when crafting depends on weapon types, slot cost, weapon weight/range, shields, two-item loadouts, or paired Runeforging compatibility.
 
 ## Authority
 
@@ -25,6 +27,7 @@ If a needed rule is unresolved, keep it configurable/WIP or ask. Do not settle i
 - L0 / L1 / L2 / L3 = Aura states.
 - Rune = magical identity/power.
 - Runestone = physical vessel.
+- Aura mastery belongs to the wielder per Rune identity; it is not independent mastery stored on each weapon.
 
 ## Implementation principles
 
@@ -35,7 +38,8 @@ If a needed rule is unresolved, keep it configurable/WIP or ask. Do not settle i
 - Artifact creation requires the intended wielder's blood.
 - A clean Artifact blood bond has no recoil; imperfect surviving bonds may recoil.
 - Rune Extraction is an advanced blacksmith technique; exact risk/cost remains tunable.
+- Two compatible 1-slot weapons may be Runeforged together as a paired operation; exact paired-failure/destruction behavior remains unresolved.
 - Keep balance values data-driven when practical.
 - Never add undefined Runes or conditioned weapon transformations to make implementation convenient.
 
-Read the reference for the complete current rules and WIP boundaries.
+Read the references for the complete current rules and WIP boundaries.
