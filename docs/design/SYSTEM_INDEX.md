@@ -17,8 +17,10 @@ This is the routing map for game-design and implementation context.
 | Runeforging & Artifact blood bond | LOCKED FOUNDATION | `.claude/skills/blacksmithing/` |
 | Rune taxonomy & registry | LOCKED FOUNDATION | `.claude/skills/runes-aura/` |
 | Aura L0-L2 structure | LOCKED FOUNDATION | `.claude/skills/runes-aura/` |
+| Aura visual/family themes | LOCKED FOUNDATION | `.claude/skills/runes-aura/references/aura-visual-reference.md`; exact combat effects remain tunable/authored |
 | Wielder Rune mastery + paired weapon Aura behavior | LOCKED FOUNDATION | `.claude/skills/runes-aura/`; `.claude/skills/units/references/weapon-registry.md` |
 | Exact Aura mastery turnover/progression | PARTIAL / WIP | deliberately wait for real game/playtesting |
+| Chaos/Order named weapon roster concepts | PARTIAL / WIP | `.claude/skills/runes-aura/references/chaos-order-weapon-roster.md`; source conflicts remain marked WIP |
 | Chaos/Order L3 gameplay | DEFERRED / WIP | `.claude/skills/runes-aura/` |
 | Unit/Hero structure | LOCKED FOUNDATION | `.claude/skills/units/` |
 | Equipment-defined combat classes | LOCKED FOUNDATION | `.claude/skills/units/`; exact mappings are configurable creator-authored data |
@@ -44,6 +46,8 @@ This is the routing map for game-design and implementation context.
 | Browser V1 platform + tech stack | LOCKED FOUNDATION | `docs/architecture/TECH_STACK.md` |
 | Browser auth/account/security architecture | LOCKED FOUNDATION | `docs/architecture/AUTH_SECURITY.md` |
 | Desktop web + mobile PWA layout foundation | LOCKED FOUNDATION | `docs/design/APP_LAYOUT.md` |
+| Approved UI visual baseline | LOCKED FOUNDATION | `docs/design/VISUAL_BASELINE.md` |
+| Legacy/source correction routing | LOCKED FOUNDATION | `docs/design/SOURCE_CORRECTIONS.md` |
 | Persistence/database/API architecture | LOCKED FOUNDATION | ASP.NET Core + EF Core + PostgreSQL in `TECH_STACK.md`; implementation pending |
 | CI/CD + Azure deployment target | LOCKED FOUNDATION | GitHub Actions + Azure target in `TECH_STACK.md`; implementation task pending |
 | Steam client/integration | DEFERRED | Browser V1 first; Steam later |
