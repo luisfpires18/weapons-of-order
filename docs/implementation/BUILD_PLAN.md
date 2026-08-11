@@ -27,7 +27,7 @@ The priority is to reach a complete **local gameplay loop** before spending prom
 
 ## Task 0 - Implementation foundation
 
-**Status: THIS BRANCH / READY TO MERGE**
+**Status: MERGED**
 
 Purpose:
 - lock Browser V1 platform/stack;
@@ -51,6 +51,8 @@ No production gameplay feature should be added as part of Task 0.
 ---
 
 ## Task 1 - Browser application foundation + CI
+
+**Status: THIS BRANCH / AWAITING REVIEW**
 
 ### Goal
 

@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WeaponsOfOrder.Api/WeaponsOfOrder.Api.csproj" />
+    <Project Path="src/WeaponsOfOrder.Infrastructure/WeaponsOfOrder.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WeaponsOfOrder.Api.Tests/WeaponsOfOrder.Api.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -16,8 +16,11 @@ export function TitleScreen() {
   const navigate = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // ENTER WORLD points at its real future destination. Task 2 implements /login and
+  // the authenticated session; until then it resolves to the not-found screen rather
+  // than to the removed /hub placeholder or to a faked completed login.
   const items: TitleMenuItem[] = [
-    { label: "ENTER WORLD", onSelect: () => void navigate("/hub") },
+    { label: "ENTER WORLD", onSelect: () => void navigate("/login") },
     { label: "SETTINGS", onSelect: () => setSettingsOpen(true) },
   ];
 

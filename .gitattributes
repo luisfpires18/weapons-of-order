@@ -1,0 +1,12 @@
+# LF in the index and in every working tree, including Windows. `dotnet format`
+# enforces `end_of_line = lf` from .editorconfig, so a CRLF checkout would fail CI
+# formatting verification on a developer machine but pass on the Linux runner.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary

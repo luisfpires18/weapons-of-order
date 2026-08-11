@@ -1,0 +1,19 @@
+# .NET build output
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+
+# Built React client copied into the API for single-origin hosting
+server/src/WeaponsOfOrder.Api/wwwroot/
+
+# Local environment overrides — never commit real credentials
+*.env
+.env.local
+appsettings.Local.json
+
+# Tooling
+.idea/
+*.swp
+.DS_Store
