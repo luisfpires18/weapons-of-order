@@ -16,6 +16,7 @@ This is the routing map for game-design and implementation context.
 | Blacksmithing & armor smithing | LOCKED FOUNDATION | `.claude/skills/blacksmithing/` |
 | Runeforging & Artifact blood bond | LOCKED FOUNDATION | `.claude/skills/blacksmithing/` |
 | Rune taxonomy & registry | LOCKED FOUNDATION | `.claude/skills/runes-aura/` |
+| Preserved Rune/Aura/Runeforged/high-tier source drafts | REFERENCE ONLY | `.claude/skills/runes-aura/references/source-drafts/`; current canonical references always win conflicts |
 | Aura L0-L2 structure | LOCKED FOUNDATION | `.claude/skills/runes-aura/` |
 | Aura visual/family themes | LOCKED FOUNDATION | `.claude/skills/runes-aura/references/aura-visual-reference.md`; exact combat effects remain tunable/authored |
 | Wielder Rune mastery + paired weapon Aura behavior | LOCKED FOUNDATION | `.claude/skills/runes-aura/`; `.claude/skills/units/references/weapon-registry.md` |
@@ -36,6 +37,7 @@ This is the routing map for game-design and implementation context.
 | Damage/Defense/Crit/Heavy math v1 | LOCKED FOUNDATION | `.claude/skills/combat/` |
 | Energy generation + L0/L1/L2 attack progression | LOCKED FOUNDATION | `.claude/skills/combat/` |
 | Attack Interval structure | LOCKED FOUNDATION | `.claude/skills/combat/`; exact modifiers are tuning data |
+| Same-timestamp attack batching + finite battle termination | LOCKED FOUNDATION | `.claude/skills/combat/`; exact timeout durations are tuning data |
 | Server-authoritative deterministic battle/replay model | LOCKED FOUNDATION | `.claude/skills/combat/` |
 | Synergies | PARTIAL / WIP | separate future system; no skill yet |
 | Unit acquisition/progression | NOT DESIGNED | `OPEN_QUESTIONS.md` |
@@ -48,7 +50,7 @@ This is the routing map for game-design and implementation context.
 | Desktop web + mobile PWA layout foundation | LOCKED FOUNDATION | `docs/design/APP_LAYOUT.md` |
 | Approved UI visual baseline | LOCKED FOUNDATION | `docs/design/VISUAL_BASELINE.md` |
 | Persistence/database/API architecture | LOCKED FOUNDATION | ASP.NET Core + EF Core + PostgreSQL in `TECH_STACK.md`; implementation pending |
-| CI/CD + Azure deployment target | LOCKED FOUNDATION | GitHub Actions + Azure target in `TECH_STACK.md`; implementation task pending |
+| CI + Azure deployment target | LOCKED FOUNDATION | CI starts in Task 1; full Azure staging follows the first complete local gameplay loop in `BUILD_PLAN.md` |
 | Steam client/integration | DEFERRED | Browser V1 first; Steam later |
 | Browser V1 implementation plan | LOCKED FOUNDATION | `docs/implementation/BUILD_PLAN.md` |
 
