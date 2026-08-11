@@ -78,7 +78,10 @@ export default defineConfig({
     },
   },
   test: {
+    // Node by default: most tests here are pure functions and fetch contracts, and a DOM
+    // they never touch is only startup cost. The shell tests that do need one opt in with
+    // an `@vitest-environment jsdom` docblock.
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
   },
 });

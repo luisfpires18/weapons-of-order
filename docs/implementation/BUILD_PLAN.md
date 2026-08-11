@@ -140,7 +140,7 @@ A developer/agent can:
 
 ## Task 2 - Login + account security
 
-**Status: THIS BRANCH / AWAITING REVIEW**
+**Status: MERGED**
 
 ### Goal
 
@@ -202,6 +202,8 @@ Focused backend/frontend tests plus Playwright/browser flow for:
 ---
 
 ## Task 3 - Authenticated game shell + menus
+
+**Status: THIS BRANCH / AWAITING CREATOR REVIEW**
 
 ### Goal
 

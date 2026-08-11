@@ -22,6 +22,12 @@ export default tseslint.config(
   // is the one ESLint 10 accepts.
   reactHooks.configs.flat.recommended,
   {
+    // Fast refresh is a dev-server behaviour. Test files and their helpers are never
+    // loaded by it, so the rule that keeps modules refreshable has nothing to protect here.
+    files: ["src/**/*.test.{ts,tsx}", "src/testing/**/*.{ts,tsx}"],
+    rules: { "react-refresh/only-export-components": "off" },
+  },
+  {
     files: ["*.config.{js,ts}"],
     languageOptions: { globals: globals.node },
   },

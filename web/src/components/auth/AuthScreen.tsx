@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import forgeBackground from "@art/backgrounds/forge-16x9.png";
+import { EmberRule } from "@/components/EmberRule";
 
 /**
  * One step further into the same cavern as the title screen: the forge art stays, pushed
@@ -62,24 +63,5 @@ export function AuthScreen({
         {footer ? <div className="flex w-full max-w-[26rem] flex-col gap-3">{footer}</div> : null}
       </div>
     </main>
-  );
-}
-
-/**
- * The recurring mark of these screens: a bar of ember cooling to nothing along its length.
- * It answers the rules flanking OF in the wordmark, and the same colour is what a field
- * border turns when it takes focus.
- */
-export function EmberRule() {
-  return (
-    <span
-      aria-hidden
-      className="block h-[2px] w-full"
-      style={{
-        background:
-          "linear-gradient(to right, var(--color-ember) 0%," +
-          " color-mix(in srgb, var(--color-ember) 35%, transparent) 45%, transparent 100%)",
-      }}
-    />
   );
 }
