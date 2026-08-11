@@ -1,24 +1,17 @@
 import { Route, Routes } from "react-router";
-import { PlaceholderScreen } from "@/screens/PlaceholderScreen";
+import { NotFoundScreen } from "@/screens/NotFoundScreen";
 import { TitleScreen } from "@/screens/TitleScreen";
 
-const placeholders = [
-  { path: "/hub", name: "HUB" },
-  { path: "/barracks", name: "BARRACKS" },
-  { path: "/forge", name: "FORGE" },
-  { path: "/arrange", name: "ARRANGE" },
-  { path: "/dungeon", name: "DUNGEON" },
-  { path: "/vault", name: "VAULT" },
-  { path: "/ladder", name: "LADDER" },
-];
-
+// Task 1 removed the pre-Browser-V1 placeholder routes (/hub, /barracks, /forge,
+// /arrange, /dungeon, /vault, /ladder). They predated the approved architecture and
+// were not replaced with invented screens: real destinations arrive with the tasks
+// that own them (auth in Task 2, the authenticated shell in Task 3). Anything else
+// resolves as not found rather than quietly becoming the menu structure.
 export function App() {
   return (
     <Routes>
       <Route path="/" element={<TitleScreen />} />
-      {placeholders.map(({ path, name }) => (
-        <Route key={path} path={path} element={<PlaceholderScreen name={name} />} />
-      ))}
+      <Route path="*" element={<NotFoundScreen />} />
     </Routes>
   );
 }

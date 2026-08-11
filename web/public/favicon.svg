@@ -1,0 +1,11 @@
+<!-- Neutral placeholder mark: void field, ember diamond outline. Not a logo. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" fill="#030A10" />
+  <path
+    d="M32 12 52 32 32 52 12 32Z"
+    fill="none"
+    stroke="#FB5000"
+    stroke-width="7"
+    stroke-linejoin="miter"
+  />
+</svg>

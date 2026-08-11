@@ -1,0 +1,102 @@
+﻿name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+
+      # Reads the pinned version from web/package.json "packageManager" rather than
+      # whatever pnpm the runner image happens to ship.
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: web/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  server:
+    name: Server
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: weapons_of_order
+          POSTGRES_USER: woo_dev
+          POSTGRES_PASSWORD: woo_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U woo_dev -d weapons_of_order"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Reads the pinned SDK from global.json rather than the runner default.
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore server/WeaponsOfOrder.slnx
+
+      - name: Verify formatting
+        run: dotnet format server/WeaponsOfOrder.slnx --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build server/WeaponsOfOrder.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test server/WeaponsOfOrder.slnx --configuration Release --no-build
+
+      - name: Restore dotnet tools
+        run: dotnet tool restore
+
+      # Proves the migration pipeline reaches a real PostgreSQL instance and applies
+      # cleanly from an empty database.
+      - name: Apply migrations to a clean database
+        env:
+          ConnectionStrings__WeaponsOfOrder: >-
+            Host=localhost;Port=5432;Database=weapons_of_order;Username=woo_dev;Password=woo_dev
+        run: >-
+          dotnet ef database update
+          --project server/src/WeaponsOfOrder.Infrastructure
+          --startup-project server/src/WeaponsOfOrder.Api
+          --configuration Release
+          --no-build

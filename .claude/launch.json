@@ -3,8 +3,9 @@
   "configurations": [
     {
       "name": "web",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--dir", "web", "dev"],
+      "//": "corepack, not pnpm: a globally installed pnpm fails the engines.pnpm pin.",
+      "runtimeExecutable": "corepack",
+      "runtimeArgs": ["pnpm", "--dir", "web", "dev"],
       "port": 1337
     }
   ]
