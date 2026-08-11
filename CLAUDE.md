@@ -24,6 +24,8 @@ A newer explicit creator decision overrides an older draft or implementation.
 
 Never infer that existing code is canon merely because it exists.
 
+Older rune/Aura/weapon source files must be interpreted through `docs/design/SOURCE_CORRECTIONS.md` when reused.
+
 ## Required implementation context
 
 Before substantial implementation work, read the documents relevant to the task rather than loading everything.
@@ -32,6 +34,7 @@ Project-wide implementation foundation:
 - `docs/architecture/TECH_STACK.md`
 - `docs/architecture/AUTH_SECURITY.md` when authentication/security/account data is involved
 - `docs/design/APP_LAYOUT.md` when frontend layout/navigation/responsiveness is involved
+- `docs/design/VISUAL_BASELINE.md` when frontend visual styling, navigation, panels or controls are involved
 - `docs/implementation/BUILD_PLAN.md` for task order/scope
 
 Before gameplay implementation:
@@ -63,7 +66,7 @@ Two upstream Anthropic skills are vendored into this repository from `anthropics
 
 They are general implementation tooling, **not Weapons of Order game canon**.
 
-Use `frontend-design` for significant UI creation/restyling. It does not override the creator's visual direction or `APP_LAYOUT.md`; the approved WoO title screen and creator instructions remain the brief.
+Use `frontend-design` for significant UI creation/restyling. It does not override the creator's visual direction, `APP_LAYOUT.md`, or `VISUAL_BASELINE.md`; the approved WoO title screen and creator instructions remain the brief.
 
 Use `webapp-testing` for real browser verification, screenshots, responsive checks and UI-flow debugging. Passing unit tests alone is not enough evidence that a responsive frontend task is visually correct.
 
@@ -125,7 +128,7 @@ Do not resurrect old gameplay contracts, old fixed Rune effects, old unit schema
 
 ## Visual implementation rules
 
-The approved landing/title screen is the visual anchor for the rest of Browser V1.
+The approved landing/title screen is the visual anchor for the rest of Browser V1. Its concrete composition/color/shape language is recorded in `docs/design/VISUAL_BASELINE.md`.
 
 For menus/navigation/buttons:
 - derive/reuse the established visual tokens/colors rather than introducing a generic SaaS palette;
