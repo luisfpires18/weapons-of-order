@@ -26,6 +26,7 @@ Use it for exact names/classification. Blank/WIP fields stay blank.
 | Psychic | Mind | Mystic | Mental manipulation/control |
 | Meteorite | Obsidian | Material | Erodes enemy gear/aura |
 | Monstrosity | Any Animal | Animal | Corrupts an animal into a monstrosity |
+| Entropy | Circuit | Technic | Circuit/electrical feedback and destabilization; late-game Technic-derived corruption |
 
 Do not substitute older-source `Necrosis` or typo `Metorite` unless the creator explicitly renames them.
 
@@ -43,6 +44,10 @@ Do not substitute older-source `Necrosis` or typo `Metorite` unless the creator 
 | Ascendant | Any Animal | Animal | Divine grace; triple dash, mid-air counters, glide |
 
 The purified list is explicitly incomplete. Do not add missing results.
+
+Current WIP derivation placeholders that are not yet named Purified Runes:
+- Gravity + Order
+- Magnet + Order
 
 ## Primal Runes
 

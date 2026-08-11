@@ -1,0 +1,222 @@
+# Weapons of Order: Authentication & Security V1
+
+This document is the implementation authority for Browser V1 authentication/session/security foundations.
+
+## V1 account model
+
+Browser V1 uses a Weapons of Order account backed by **ASP.NET Core Identity + PostgreSQL**.
+
+Initial login method:
+- email + password.
+
+Steam authentication/account linking is deferred until Steam work begins.
+
+Do not make the database identity depend on an external provider. The stable game/account identity is an internal User ID so external login methods can be linked later.
+
+Conceptually:
+
+`WoO UserId -> player/account data`
+
+Future:
+
+`WoO UserId -> linked SteamId`
+
+## Browser session model
+
+Use server-issued **HttpOnly cookies** for the normal authenticated browser session.
+
+Production authentication cookies must use appropriate security attributes, including:
+- `HttpOnly`;
+- `Secure`;
+- an intentional `SameSite` policy compatible with the same-origin architecture;
+- explicit expiration/session behavior.
+
+Do not put long-lived authentication tokens into `localStorage` or ordinary JavaScript-readable storage.
+
+The browser client may ask the API who the current user is. The server remains the authority for identity and authorization.
+
+## Registration
+
+Registration requires:
+- valid email;
+- password accepted by the configured Identity password policy.
+
+Use normalized/unique email semantics through Identity.
+
+Do not create separate custom password hashing code.
+
+Do not expose whether another person's account exists through unnecessarily specific public error messages.
+
+Email confirmation should be supported by the account architecture. During local development a development email/token flow may be used until a production email provider is selected.
+
+The exact production email delivery provider is an infrastructure/configuration choice and is not a game-design blocker.
+
+## Login/logout
+
+Login:
+- validates credentials server-side through Identity;
+- establishes the secure cookie session;
+- applies rate limiting/lockout protections;
+- returns generic failure behavior for invalid credentials.
+
+Logout:
+- invalidates/signs out the server authentication session;
+- returns the user to the unauthenticated shell.
+
+Sensitive state must not remain visible from stale client memory after logout.
+
+## Password recovery
+
+Use Identity's reset-token flow.
+
+Password reset messages must not reveal whether a submitted address belongs to an account.
+
+Do not store reset tokens in plaintext as custom permanent database fields.
+
+## Authorization rule
+
+Authentication answers **who the caller is**.
+
+Authorization must independently answer **whether that caller may perform the action**.
+
+For every player-owned resource:
+- resolve the current User ID from the authenticated server context;
+- query/validate ownership server-side;
+- never authorize an operation merely because the client posted a matching `UserId`, inventory ID, Unit ID, weapon ID, battle ID, etc.
+
+The client must never be allowed to choose another player's User ID for an authoritative operation.
+
+## Server-authoritative game security
+
+Treat the browser as untrusted.
+
+Never accept these as authoritative just because the client submitted them:
+- final Unit stats;
+- ownership of equipment/resources;
+- crafting success/results;
+- Rune/weapon validity;
+- equipment compatibility;
+- currency/resource balances;
+- battle RNG;
+- combat damage;
+- battle winner;
+- rewards;
+- progression/mastery changes.
+
+The client submits intentions/commands. The server validates and computes results.
+
+## CSRF
+
+Because Browser V1 uses cookie authentication, state-changing requests require CSRF protection.
+
+Use ASP.NET Core antiforgery protection or an equivalent server-validated anti-CSRF mechanism for authenticated mutating requests.
+
+Do not disable antiforgery globally to make React requests easier.
+
+Read-only requests must not mutate authoritative state.
+
+## XSS / content handling
+
+React escaping should remain the default.
+
+Avoid rendering untrusted HTML. Do not use `dangerouslySetInnerHTML` for user-generated data unless there is an explicit reviewed sanitization requirement.
+
+Validate and constrain user-authored text on the server as appropriate to the feature.
+
+## Rate limiting and abuse protection
+
+Apply server-side rate limiting where abuse matters, especially:
+- login;
+- registration;
+- password-reset requests;
+- email-confirmation resend;
+- future expensive game commands/endpoints where needed.
+
+ASP.NET Core Identity lockout/rate-limit behavior should be configured deliberately rather than relying on unlimited credential attempts.
+
+Exact thresholds are security/configuration values and may be tuned without changing this architecture.
+
+## Validation
+
+Client validation exists for usability only.
+
+All authoritative input is validated again server-side.
+
+Reject malformed, impossible, unauthorized, or stale commands with clear API errors without exposing secrets/internal stack traces.
+
+## Secrets and configuration
+
+Never commit:
+- production connection strings;
+- signing/secrets;
+- email provider credentials;
+- Azure credentials;
+- future Steam publisher keys;
+- other production secrets.
+
+Use local development secrets/environment configuration for development and managed Azure configuration/secrets for deployment.
+
+Frontend build-time environment variables are public to the browser unless proven otherwise. Never treat a Vite client environment variable as secret.
+
+## Database/security hygiene
+
+- Use EF Core parameterization rather than hand-built SQL strings for normal application queries.
+- Apply migrations intentionally.
+- Use least-privilege production database credentials where practical.
+- Do not expose database connections directly to the browser.
+- Do not log passwords, auth cookies, reset tokens, connection strings, or equivalent secrets.
+
+## Transport
+
+Production is HTTPS-only.
+
+Secure cookies must never depend on plaintext HTTP in production.
+
+Use the standard Azure/reverse-proxy configuration needed for correct HTTPS/forwarded-header behavior rather than adding custom cryptography.
+
+## PWA security
+
+The PWA service worker must not become an alternate data authority.
+
+Do not cache private authenticated API responses indiscriminately.
+
+On logout/account change, the UI must not intentionally expose cached private account data from another session.
+
+Offline gameplay that can alter authoritative game state is not part of V1.
+
+## Logging and errors
+
+Production errors should be observable through server telemetry without exposing stack traces or secrets to players.
+
+Security-relevant events may be logged with enough context to diagnose abuse while respecting private credential/token data.
+
+## Tests required for auth work
+
+At minimum, auth implementation tasks should verify:
+- registration validation;
+- successful login;
+- failed login;
+- logout;
+- unauthenticated protected endpoint rejection;
+- authenticated own-resource access;
+- rejection of cross-account resource access when such resources exist;
+- antiforgery behavior for protected mutations;
+- session behavior expected by the React client.
+
+Use the `webapp-testing` skill for end-to-end browser verification in addition to focused backend/frontend tests.
+
+## Explicitly deferred
+
+- Steam login/linking;
+- Google/Apple/social login;
+- 2FA requirement for ordinary players;
+- admin/staff authorization model beyond what an actual admin feature requires;
+- native-app token flows;
+- OAuth authorization server behavior;
+- anonymous/guest progression unless explicitly requested later.
+
+## Security change rule
+
+Do not weaken a security control merely to simplify a frontend implementation.
+
+When a security mechanism creates friction, solve the integration correctly or surface the tradeoff for review.

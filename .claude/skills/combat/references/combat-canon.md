@@ -387,7 +387,7 @@ All reinforcements enter from their assigned rear-row entry point and move norma
 
 This makes Mounted reinforcement speed meaningful.
 
-## 15. Battle end
+## 15. Battle end and finite termination
 
 An army is defeated **only when every Unit belonging to that battle is dead**, including:
 - all active Units;
@@ -398,24 +398,73 @@ Therefore:
 - a living reserve whose assigned entry hex is blocked is still alive and prevents defeat;
 - inability to enter the battlefield does not count as death and does not itself cause defeat.
 
-If both armies have every remaining Unit die as part of the same authoritative resolution, the battle result is a **Draw**.
+If both armies have every remaining Unit die as part of the same authoritative timestamp batch, the battle result is a **Draw**.
 
-Timeout/stalemate handling for situations where living Units or reserves can no longer make progress remains a separate unresolved rule. A future timeout rule must not silently redefine a living blocked reserve as dead.
+### Finite simulation guards
 
-## 16. Server authority and deterministic simulation
+A server-authoritative battle must never be allowed to simulate forever.
+
+Every battle has two configurable termination guards:
+- **Maximum Battle Duration:** a hard cap on the authoritative **simulated combat clock**.
+- **No-Progress Window:** a cap on how long simulated combat may continue without meaningful progress.
+
+For v1, meaningful progress is any of:
+- an HP value changes because damage or healing is applied;
+- a Unit dies;
+- a reserve successfully enters the battlefield.
+
+These do **not** count as progress by themselves:
+- movement;
+- retargeting;
+- path recalculation;
+- waiting;
+- a blocked reserve attempting and failing to enter.
+
+The hard duration cap exists even if the no-progress window repeatedly resets, so cyclic combat can never create an infinite pre-resolution loop.
+
+After completing the authoritative resolution batch for a timestamp:
+1. resolve deaths and normal victory/defeat;
+2. resolve simultaneous full elimination as a Draw;
+3. if neither army is defeated and either termination guard has expired, end the battle as a **Draw**.
+
+A timeout/stalemate Draw does **not** kill surviving Units, does not remove blocked reserves, and does not reinterpret a living reserve as dead. The final battle snapshot records those survivors as alive.
+
+The exact maximum-duration and no-progress-duration values are tuning/configuration, not permanent canon.
+
+## 16. Server authority, deterministic timing, and simultaneous attacks
 
 Combat is server-authoritative.
 
-The client does not perform authoritative combat math, targeting, pathing, RNG, damage, or reinforcement decisions.
+The client does not perform authoritative combat math, targeting, pathing, RNG, damage, reinforcement, termination, or victory decisions.
 
 Conceptual flow:
 1. server snapshots both armies and all pre-battle decisions;
 2. server assigns/records the authoritative RNG seed/state;
-3. server runs movement, targeting, attacks, RNG, deaths, and reserves;
+3. server runs movement, targeting, attacks, RNG, deaths, reserves, and termination guards on an authoritative simulated combat clock;
 4. server produces the authoritative battle result and event timeline;
 5. client renders that timeline.
 
 The same authoritative starting snapshot and RNG state must produce the same simulation result.
+
+### Same-timestamp attack resolution
+
+Attacks scheduled for the same authoritative timestamp resolve as one **simultaneous attack batch**.
+
+For a batch at timestamp `T`:
+1. determine which scheduled attacks are valid from the combat state immediately before `T`;
+2. those valid attacks are committed to the batch;
+3. calculate their hit/crit/damage/effects from that same pre-batch state;
+4. apply the batch's resulting damage/effects together;
+5. resolve HP totals, deaths, Energy/results, and battle-end state only after all committed attacks in that batch have resolved.
+
+Consequences:
+- a Unit killed by another attack at timestamp `T` still completes its own attack already committed for timestamp `T`;
+- one same-timestamp attacker does not gain first-strike survival priority merely because its event happened to serialize first;
+- mutual lethal attacks can deterministically eliminate both armies and produce a Draw.
+
+A stable internal ordering may be used solely for deterministic RNG consumption, logging, and event serialization. That ordering must not change the simultaneous state-application rule above.
+
+Future explicitly authored reaction/counter mechanics may define their own timing relationship, but must do so deliberately rather than relying on arbitrary event-list order.
 
 ## 17. Pre-resolved computation and progressive reveal
 
@@ -429,6 +478,11 @@ The current preferred architecture is:
 This preserves suspense without requiring the server to spend the full visual battle duration calculating in real time.
 
 For an early MVP, returning the complete event log at once is acceptable if simpler. Progressive delivery/reveal can be added before competitive multiplayer if needed.
+
+Pre-resolution must always terminate through:
+- ordinary defeat;
+- simultaneous-elimination Draw; or
+- the finite simulation guards.
 
 Do not expose the simulation outcome to gameplay logic on the client as authoritative state.
 
@@ -464,10 +518,11 @@ Do not silently decide:
 - exact movement timing values
 - exact special targeting overrides
 - exact reinforcement delay
-- timeout/overtime/stalemate rules
 - exact progressive event delivery/network protocol
 - large-scale Formation/Squad combat simulation
 
 Equal shortest paths and exact-equal targeting candidates do not require additional authored gameplay priorities for v1; deterministic implementation ordering is sufficient.
+
+The existence and Draw outcome of both finite termination guards are locked. Their exact durations remain tunable balance/configuration values.
 
 Current numeric combat baselines such as Power scale 5, Defense constant 100, +10 Energy, 2.5x Heavy, and 2x Crit are v1 balance values and may be iterated without changing the underlying system structure.
