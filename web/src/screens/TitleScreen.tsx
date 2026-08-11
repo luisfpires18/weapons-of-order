@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import forgeBackground from "@art/backgrounds/forge-16x9.png";
+import { WORLD_PATH } from "@/auth/redirect";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { TitleMenu } from "@/components/TitleMenu";
 import type { TitleMenuItem } from "@/components/TitleMenu";
@@ -16,11 +17,11 @@ export function TitleScreen() {
   const navigate = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // ENTER WORLD points at its real future destination. Task 2 implements /login and
-  // the authenticated session; until then it resolves to the not-found screen rather
-  // than to the removed /hub placeholder or to a faked completed login.
+  // ENTER WORLD points at the destination itself, not at the sign-in screen. The route
+  // guard is what turns a visitor without a session towards /login, so the same action
+  // works for both states and a signed-in player is not asked to sign in again.
   const items: TitleMenuItem[] = [
-    { label: "ENTER WORLD", onSelect: () => void navigate("/login") },
+    { label: "ENTER WORLD", onSelect: () => void navigate(WORLD_PATH) },
     { label: "SETTINGS", onSelect: () => setSettingsOpen(true) },
   ];
 

@@ -82,7 +82,13 @@ jobs:
       - name: Build
         run: dotnet build server/WeaponsOfOrder.slnx --configuration Release --no-restore
 
+      # The account tests run against real PostgreSQL: Identity's normalization, unique
+      # indexes and concurrency stamps are not exercised by a substitute store. The suite
+      # migrates its own database on first use, so no extra setup step is needed here.
       - name: Test
+        env:
+          WOO_TEST_CONNECTION_STRING: >-
+            Host=localhost;Port=5432;Database=weapons_of_order_tests;Username=woo_dev;Password=woo_dev
         run: dotnet test server/WeaponsOfOrder.slnx --configuration Release --no-build
 
       - name: Restore dotnet tools

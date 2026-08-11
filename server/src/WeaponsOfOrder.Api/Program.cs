@@ -1,3 +1,5 @@
+using WeaponsOfOrder.Api.Auth;
+using WeaponsOfOrder.Api.Auth.Notifications;
 using WeaponsOfOrder.Api.Health;
 using WeaponsOfOrder.Infrastructure;
 using WeaponsOfOrder.Infrastructure.Persistence;
@@ -6,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddWeaponsOfOrderPersistence(builder.Configuration);
+builder.Services.AddWeaponsOfOrderAuth(builder.Configuration, builder.Environment);
 
 builder.Services
     .AddHealthChecks()
@@ -13,10 +16,30 @@ builder.Services
 
 var app = builder.Build();
 
+// ProblemDetails for both thrown exceptions and bare status codes, so nothing reaches a
+// player as a stack trace or as an empty body the client cannot interpret.
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
+// Before authentication: a credential-stuffing run should be turned away without the
+// server ever hashing a password.
+app.UseRateLimiter();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+// A no-op for the JSON endpoints here, which validate through the antiforgery endpoint
+// filter instead. It is in the pipeline so a future form-binding endpoint is covered by
+// the framework's own check rather than silently unprotected.
+app.UseAntiforgery();
+
 app.MapWeaponsOfOrderHealthChecks();
+app.MapWeaponsOfOrderAuth();
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapDevelopmentAccountNotifications();
+}
 
 // Unmatched /api routes stay 404s instead of falling through to the SPA document.
 app.MapFallback("/api/{**rest}", () => Results.NotFound());

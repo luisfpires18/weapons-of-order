@@ -205,6 +205,58 @@ At minimum, auth implementation tasks should verify:
 
 Use the `webapp-testing` skill for end-to-end browser verification in addition to focused backend/frontend tests.
 
+## Browser V1 as implemented
+
+This section records the concrete choices made where the architecture above left a
+configuration decision open. It is a description of the current implementation, not a new
+constraint: thresholds and names remain tunable.
+
+Session cookie:
+- name `woo.session`, `HttpOnly`, `Path=/`, essential;
+- `SameSite=Lax` — client and API share one origin so no legitimate request is cross-site,
+  while a plain link into the game still arrives signed in;
+- `Secure` always outside Development, `SameAsRequest` in Development so local plain-http
+  works;
+- 14-day sliding expiration;
+- unauthenticated API calls answer `401` with ProblemDetails rather than redirecting to an
+  HTML login page.
+
+Antiforgery:
+- ASP.NET Core antiforgery, cookie `woo.antiforgery` (`HttpOnly`), request token echoed in
+  the `X-WoO-Antiforgery` header;
+- the request token is published by `GET /api/auth/session`, which a cross-site page cannot
+  read;
+- validated by an endpoint filter applied to the whole mutating route group, including the
+  unauthenticated flows, because login CSRF is a real attack and a uniform rule is easier to
+  keep correct than an exemption list.
+
+Email confirmation:
+- required before a session can be established, configurable through
+  `Auth:RequireConfirmedEmailForSignIn`;
+- enforced by the login endpoint **after** the password check, not through
+  `IdentityOptions.SignIn.RequireConfirmedAccount`. Identity's own check runs before the
+  password is verified, which would let anyone discover which addresses are registered.
+
+Development email delivery:
+- no production provider is configured yet;
+- in the Development environment only, confirmation and reset links are captured in memory
+  and published by `GET /api/dev/account-notifications`, and written to the server log;
+- every other environment uses a sender that records only that a message was dropped, never
+  the link, so tokens stay out of logs;
+- the public responses are identical either way, so the capture does not change what the API
+  discloses.
+
+Current thresholds (all configuration under `Auth`):
+- password: 12 characters minimum, 4 unique, no character-class requirements;
+- lockout: 5 failed attempts, 15 minutes;
+- rate limits per caller address: login 10 per 5 minutes, registration 5 per 15 minutes,
+  password reset and confirmation resend 5 per 15 minutes.
+
+Deployment still has to set:
+- `Auth:ClientBaseUrl`, so account links do not depend on the request's `Host` header;
+- forwarded-header handling, so rate-limit partitions see the real caller behind a proxy;
+- a real email delivery provider.
+
 ## Explicitly deferred
 
 - Steam login/linking;

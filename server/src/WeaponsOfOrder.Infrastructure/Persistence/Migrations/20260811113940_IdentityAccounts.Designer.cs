@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using WeaponsOfOrder.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using WeaponsOfOrder.Infrastructure.Persistence;
 namespace WeaponsOfOrder.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(WeaponsOfOrderDbContext))]
-    partial class WeaponsOfOrderDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260811113940_IdentityAccounts")]
+    partial class IdentityAccounts
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

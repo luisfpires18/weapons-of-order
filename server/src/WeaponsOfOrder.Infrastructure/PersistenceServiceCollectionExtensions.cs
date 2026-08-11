@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,4 +36,15 @@ public static class PersistenceServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// Points ASP.NET Core Identity at the application's own context, so the account
+    /// tables live in the same database and migration history as everything else.
+    /// </summary>
+    /// <remarks>
+    /// Exists here rather than in the host for the same reason as the method above: the
+    /// web layer composes authentication without needing to know EF Core.
+    /// </remarks>
+    public static IdentityBuilder AddWeaponsOfOrderIdentityStores(this IdentityBuilder builder)
+        => builder.AddEntityFrameworkStores<WeaponsOfOrderDbContext>();
 }

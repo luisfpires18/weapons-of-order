@@ -2,10 +2,17 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "api",
+      "//": "Start this before `web`: the Vite dev server proxies /api here.",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "server/src/WeaponsOfOrder.Api"],
+      "port": 5180
+    },
+    {
       "name": "web",
-      "//": "corepack, not pnpm: a globally installed pnpm fails the engines.pnpm pin.",
+      "//": "corepack with the version spelled out: a globally installed pnpm fails the engines.pnpm pin, and bare `corepack pnpm` resolves against the repository root, which has no package.json to read the pin from. Keep this in step with packageManager in web/package.json.",
       "runtimeExecutable": "corepack",
-      "runtimeArgs": ["pnpm", "--dir", "web", "dev"],
+      "runtimeArgs": ["pnpm@10.34.0", "--dir", "web", "dev"],
       "port": 1337
     }
   ]

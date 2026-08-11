@@ -11,8 +11,10 @@ the source-of-truth order. This file covers only how to run and validate the cod
 web/                                  React + TypeScript + Vite client
 server/
   src/WeaponsOfOrder.Api/             ASP.NET Core host, endpoints, configuration
+    Auth/                             Accounts, sessions, account notifications
+    Security/                         Antiforgery and authorization conventions
   src/WeaponsOfOrder.Infrastructure/  EF Core / PostgreSQL persistence and migrations
-  tests/WeaponsOfOrder.Api.Tests/     API and configuration tests
+  tests/WeaponsOfOrder.Api.Tests/     API, account and configuration tests
 art/                                  Shared art, aliased into the client as @art
 docker-compose.yml                    Local development PostgreSQL
 ```
@@ -106,9 +108,36 @@ dotnet ef migrations add <Name> --project server/src/WeaponsOfOrder.Infrastructu
 dotnet ef database update --project server/src/WeaponsOfOrder.Infrastructure --startup-project server/src/WeaponsOfOrder.Api
 ```
 
+## Accounts
+
+Sign-in is email + password on ASP.NET Core Identity, with the session held in an
+`HttpOnly` cookie. There is no token in `localStorage`, and mutating requests carry an
+antiforgery token in the `X-WoO-Antiforgery` header, which the client reads from
+`GET /api/auth/session`. Full rules are in
+[`AUTH_SECURITY.md`](docs/architecture/AUTH_SECURITY.md).
+
+A confirmed email address is required before sign-in. **No email provider is configured
+yet**, so in development the confirmation and reset links are captured in memory instead of
+sent:
+
+- `GET /api/dev/account-notifications` lists the most recent links;
+- the same links are written to the API log;
+- the auth screens show an "Open the captured link" action.
+
+All three exist **only** when the API runs in the Development environment. Every other
+environment drops the message and logs that it did, without recording the link — a link is a
+bearer credential. Switch the endpoint off with `Auth:Development:ExposeNotifications`.
+
+Security thresholds — password policy, lockout, rate limits, cookie lifetime — live under the
+`Auth` section of `appsettings.json`.
+
 ## Validation
 
 The same checks [CI](.github/workflows/ci.yml) runs.
+
+The backend tests need PostgreSQL running: they exercise Identity against the real provider
+and migrate their own `weapons_of_order_tests` database on first use. Run
+`docker compose up -d` first, or point `WOO_TEST_CONNECTION_STRING` somewhere else.
 
 Client:
 
