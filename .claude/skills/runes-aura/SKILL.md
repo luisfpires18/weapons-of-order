@@ -9,7 +9,13 @@ Read `references/rune-canon.md` first.
 
 Read `references/rune-registry.md` when exact Rune names, families, fusion results, uniqueness, rarity, or current availability matter.
 
+Read `references/aura-visual-reference.md` when work needs Conduit/Aspect visual language, body/weapon manifestation themes, or temporary Rune-effect direction. Treat it as visual/thematic reference rather than locked combat numbers.
+
+Read `references/chaos-order-weapon-roster.md` when named Weapons of Chaos/Order or their source concepts matter. L3 gameplay and soul consequences remain deferred/WIP.
+
 Read `.claude/skills/units/references/weapon-registry.md` when Aura/mastery interacts with weapon types, dual wielding, paired Runeforged weapons, weapon categories, or loadout compatibility.
+
+Read `docs/design/SOURCE_CORRECTIONS.md` before reusing rules directly from the older `rune_list.md`, `aura_levels.md`, `runeforged_weapons.md`, or `weapons_of_chaos_and_order.md` source files.
 
 ## Authority
 
