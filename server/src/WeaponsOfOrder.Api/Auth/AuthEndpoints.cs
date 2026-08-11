@@ -79,10 +79,9 @@ internal static class AuthEndpoints
 
     private static async Task<IResult> RegisterAsync(
         RegisterRequest request,
-        HttpContext http,
         UserManager<WeaponsOfOrderUser> users,
         IAccountNotificationSender notifications,
-        IOptions<AuthOptions> options,
+        AccountLinkFactory links,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
@@ -136,7 +135,8 @@ internal static class AuthEndpoints
             return Acknowledged();
         }
 
-        await SendEmailConfirmationAsync(candidate, http, users, notifications, options.Value, cancellationToken);
+        await SendEmailConfirmationAsync(
+            candidate, users, notifications, links, loggerFactory, cancellationToken);
 
         return Acknowledged();
     }
@@ -193,10 +193,10 @@ internal static class AuthEndpoints
 
     private static async Task<IResult> ForgotPasswordAsync(
         ForgotPasswordRequest request,
-        HttpContext http,
         UserManager<WeaponsOfOrderUser> users,
         IAccountNotificationSender notifications,
-        IOptions<AuthOptions> options,
+        AccountLinkFactory links,
+        ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
         var email = Normalize(request.Email);
@@ -205,11 +205,18 @@ internal static class AuthEndpoints
         if (user is not null)
         {
             var token = await users.GeneratePasswordResetTokenAsync(user);
-            var link = AccountLinks.Build(http.Request, options.Value, AccountLinks.ResetPasswordPath, user.Id, token);
+            var link = links.TryBuild(AccountLinkFactory.ResetPasswordPath, user.Id, token);
 
-            await notifications.SendAsync(
-                new AccountNotification(AccountNotificationKind.PasswordReset, email, link, DateTimeOffset.UtcNow),
-                cancellationToken);
+            if (link is null)
+            {
+                LogUnbuildableLink(loggerFactory, AccountNotificationKind.PasswordReset);
+            }
+            else
+            {
+                await notifications.SendAsync(
+                    new AccountNotification(AccountNotificationKind.PasswordReset, email, link, DateTimeOffset.UtcNow),
+                    cancellationToken);
+            }
         }
 
         // Identical whether or not the address is registered.
@@ -221,7 +228,7 @@ internal static class AuthEndpoints
         UserManager<WeaponsOfOrderUser> users)
     {
         if (!Guid.TryParse(request.UserId, out var userId)
-            || !AccountLinks.TryDecodeToken(request.Token, out var token))
+            || !AccountLinkFactory.TryDecodeToken(request.Token, out var token))
         {
             return InvalidResetLink();
         }
@@ -260,7 +267,7 @@ internal static class AuthEndpoints
         UserManager<WeaponsOfOrderUser> users)
     {
         if (!Guid.TryParse(request.UserId, out var userId)
-            || !AccountLinks.TryDecodeToken(request.Token, out var token))
+            || !AccountLinkFactory.TryDecodeToken(request.Token, out var token))
         {
             return InvalidConfirmationLink();
         }
@@ -278,10 +285,10 @@ internal static class AuthEndpoints
 
     private static async Task<IResult> ResendConfirmationAsync(
         ResendConfirmationRequest request,
-        HttpContext http,
         UserManager<WeaponsOfOrderUser> users,
         IAccountNotificationSender notifications,
-        IOptions<AuthOptions> options,
+        AccountLinkFactory links,
+        ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
         var email = Normalize(request.Email);
@@ -289,7 +296,8 @@ internal static class AuthEndpoints
 
         if (user is { EmailConfirmed: false })
         {
-            await SendEmailConfirmationAsync(user, http, users, notifications, options.Value, cancellationToken);
+            await SendEmailConfirmationAsync(
+                user, users, notifications, links, loggerFactory, cancellationToken);
         }
 
         return Acknowledged();
@@ -297,14 +305,20 @@ internal static class AuthEndpoints
 
     private static async Task SendEmailConfirmationAsync(
         WeaponsOfOrderUser user,
-        HttpContext http,
         UserManager<WeaponsOfOrderUser> users,
         IAccountNotificationSender notifications,
-        AuthOptions options,
+        AccountLinkFactory links,
+        ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
         var token = await users.GenerateEmailConfirmationTokenAsync(user);
-        var link = AccountLinks.Build(http.Request, options, AccountLinks.ConfirmEmailPath, user.Id, token);
+        var link = links.TryBuild(AccountLinkFactory.ConfirmEmailPath, user.Id, token);
+
+        if (link is null)
+        {
+            LogUnbuildableLink(loggerFactory, AccountNotificationKind.EmailConfirmation);
+            return;
+        }
 
         await notifications.SendAsync(
             new AccountNotification(
@@ -314,6 +328,17 @@ internal static class AuthEndpoints
                 DateTimeOffset.UtcNow),
             cancellationToken);
     }
+
+    /// <summary>
+    /// Startup validation makes this unreachable in a running application. It exists so that
+    /// if it ever were reached, the caller still returns its ordinary acknowledgement: a
+    /// failure visible only for addresses that exist would be an account-existence oracle.
+    /// </summary>
+    private static void LogUnbuildableLink(ILoggerFactory loggerFactory, AccountNotificationKind kind)
+        => loggerFactory.CreateLogger(LoggerCategory).LogError(
+            "No trusted client origin is configured, so a {Kind} link was not created. Set "
+            + "Auth:ClientBaseUrl.",
+            kind);
 
     private static async Task<string[]> ValidatePasswordAsync(
         UserManager<WeaponsOfOrderUser> users,

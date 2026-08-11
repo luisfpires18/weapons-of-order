@@ -24,7 +24,14 @@ internal static class AuthServiceCollectionExtensions
         IConfiguration configuration,
         IWebHostEnvironment environment)
     {
-        services.AddOptions<AuthOptions>().Bind(configuration.GetSection(AuthOptions.SectionName));
+        services.AddOptions<AuthOptions>()
+            .Bind(configuration.GetSection(AuthOptions.SectionName))
+            // ValidateOnStart, so a deployment with no trusted client origin fails at boot
+            // rather than on somebody's first password reset.
+            .ValidateOnStart();
+
+        services.AddSingleton<IValidateOptions<AuthOptions>, AuthOptionsValidator>();
+        services.AddSingleton<AccountLinkFactory>();
 
         AddIdentity(services);
         AddSessionCookie(services, environment);

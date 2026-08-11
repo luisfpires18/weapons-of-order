@@ -52,16 +52,19 @@ public class WeaponsOfOrderApiFactory : WebApplicationFactory<Program>, IAsyncLi
     public CapturingNotificationSender Notifications { get; } = new();
 
     /// <summary>
-    /// Rate limits are lifted by default so an ordinary test class is not throttled by its
-    /// own setup. <see cref="RateLimitTests"/> overrides this to assert the real behaviour.
+    /// Rate limits are lifted so an ordinary test class is not throttled by its own setup,
+    /// and a client origin is supplied because startup validation requires one.
     /// </summary>
-    protected virtual IEnumerable<KeyValuePair<string, string?>> ConfigurationOverrides =>
+    private static IEnumerable<KeyValuePair<string, string?>> BaseConfiguration =>
     [
         new("Auth:RateLimit:Login:PermitLimit", "1000"),
         new("Auth:RateLimit:Registration:PermitLimit", "1000"),
         new("Auth:RateLimit:Sensitive:PermitLimit", "1000"),
         new("Auth:ClientBaseUrl", "https://localhost"),
     ];
+
+    /// <summary>Applied after <see cref="BaseConfiguration"/>, so a subclass can tighten one setting.</summary>
+    protected virtual IEnumerable<KeyValuePair<string, string?>> AdditionalConfiguration => [];
 
     public async ValueTask InitializeAsync()
     {
@@ -92,8 +95,16 @@ public class WeaponsOfOrderApiFactory : WebApplicationFactory<Program>, IAsyncLi
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.ConfigureAppConfiguration(configuration =>
-            configuration.AddInMemoryCollection(ConfigurationOverrides));
+        // Merged rather than concatenated: AddInMemoryCollection builds a dictionary and
+        // rejects a repeated key, which is exactly what a subclass tightening one setting
+        // produces.
+        var settings = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var setting in BaseConfiguration.Concat(AdditionalConfiguration))
+        {
+            settings[setting.Key] = setting.Value;
+        }
+
+        builder.ConfigureAppConfiguration(configuration => configuration.AddInMemoryCollection(settings));
 
         builder.ConfigureTestServices(services =>
         {
@@ -104,6 +115,18 @@ public class WeaponsOfOrderApiFactory : WebApplicationFactory<Program>, IAsyncLi
 }
 
 /// <summary>
+/// Configured with no trusted client origin, to prove the application refuses to start
+/// rather than falling back to something derived from the request.
+/// </summary>
+public sealed class MissingClientOriginApiFactory : WeaponsOfOrderApiFactory
+{
+    protected override IEnumerable<KeyValuePair<string, string?>> AdditionalConfiguration =>
+    [
+        new("Auth:ClientBaseUrl", string.Empty),
+    ];
+}
+
+/// <summary>
 /// A tighter budget than any test class needs for setup, so the limiter is what the
 /// assertions are actually observing.
 /// </summary>
@@ -111,7 +134,7 @@ public sealed class TightRateLimitApiFactory : WeaponsOfOrderApiFactory
 {
     public const int SensitivePermitLimit = 3;
 
-    protected override IEnumerable<KeyValuePair<string, string?>> ConfigurationOverrides =>
+    protected override IEnumerable<KeyValuePair<string, string?>> AdditionalConfiguration =>
     [
         new("Auth:RateLimit:Sensitive:PermitLimit", SensitivePermitLimit.ToString()),
         new("Auth:RateLimit:Sensitive:WindowMinutes", "15"),

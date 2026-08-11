@@ -50,13 +50,24 @@ jobs:
     name: Server
     runs-on: ubuntu-latest
 
+    # This database exists for the length of one job, on the runner's own network, and is
+    # destroyed with it. It therefore has no password at all rather than a committed
+    # placeholder one: a fake credential in a connection string is indistinguishable from a
+    # real leaked one to a secret scanner, and there is nothing here worth protecting.
+    #
+    # Never copy this to an environment that outlives a job. Local development still uses a
+    # password (docker-compose.yml), and deployed environments supply real credentials
+    # through environment configuration.
+    env:
+      WOO_CI_POSTGRES: Host=localhost;Port=5432;Username=woo_dev
+
     services:
       postgres:
         image: postgres:18-alpine
         env:
           POSTGRES_DB: weapons_of_order
           POSTGRES_USER: woo_dev
-          POSTGRES_PASSWORD: woo_dev
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
         options: >-
@@ -87,8 +98,7 @@ jobs:
       # migrates its own database on first use, so no extra setup step is needed here.
       - name: Test
         env:
-          WOO_TEST_CONNECTION_STRING: >-
-            Host=localhost;Port=5432;Database=weapons_of_order_tests;Username=woo_dev;Password=woo_dev
+          WOO_TEST_CONNECTION_STRING: ${{ env.WOO_CI_POSTGRES }};Database=weapons_of_order_tests
         run: dotnet test server/WeaponsOfOrder.slnx --configuration Release --no-build
 
       - name: Restore dotnet tools
@@ -98,8 +108,7 @@ jobs:
       # cleanly from an empty database.
       - name: Apply migrations to a clean database
         env:
-          ConnectionStrings__WeaponsOfOrder: >-
-            Host=localhost;Port=5432;Database=weapons_of_order;Username=woo_dev;Password=woo_dev
+          ConnectionStrings__WeaponsOfOrder: ${{ env.WOO_CI_POSTGRES }};Database=weapons_of_order
         run: >-
           dotnet ef database update
           --project server/src/WeaponsOfOrder.Infrastructure

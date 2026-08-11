@@ -237,12 +237,23 @@ Email confirmation:
   `IdentityOptions.SignIn.RequireConfirmedAccount`. Identity's own check runs before the
   password is verified, which would let anyone discover which addresses are registered.
 
+Account link origin:
+- built only from `Auth:ClientBaseUrl`, which must be an absolute https origin, or http for
+  a loopback host during local development, carrying no query or fragment;
+- **never** derived from the request. The `Host` header is attacker-controlled, so a link
+  built from it could point at the attacker's domain and still be mailed to the account
+  holder;
+- validated at startup, so a deployment without one refuses to boot rather than discovering
+  it on somebody's first password reset — a failure that appeared only for addresses that
+  exist would itself be an account-existence oracle.
+
 Development email delivery:
 - no production provider is configured yet;
-- in the Development environment only, confirmation and reset links are captured in memory
-  and published by `GET /api/dev/account-notifications`, and written to the server log;
-- every other environment uses a sender that records only that a message was dropped, never
-  the link, so tokens stay out of logs;
+- in the Development environment only, confirmation and reset links are captured in a
+  bounded in-memory outbox and published by `GET /api/dev/account-notifications`;
+- links and tokens are **never** written to a log, in any environment, including
+  Development: logs are copied, shipped and retained in places the in-memory outbox is not;
+- every other environment uses a sender that records only that a message was dropped;
 - the public responses are identical either way, so the capture does not change what the API
   discloses.
 
@@ -253,9 +264,9 @@ Current thresholds (all configuration under `Auth`):
   password reset and confirmation resend 5 per 15 minutes.
 
 Deployment still has to set:
-- `Auth:ClientBaseUrl`, so account links do not depend on the request's `Host` header;
 - forwarded-header handling, so rate-limit partitions see the real caller behind a proxy;
-- a real email delivery provider.
+- a real email delivery provider. Until one exists, no confirmation or reset message leaves
+  a non-Development environment.
 
 ## Explicitly deferred
 
