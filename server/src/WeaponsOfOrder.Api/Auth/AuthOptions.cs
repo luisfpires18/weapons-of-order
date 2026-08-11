@@ -22,11 +22,13 @@ internal sealed class AuthOptions
     public bool RequireConfirmedEmailForSignIn { get; set; } = true;
 
     /// <summary>
-    /// Absolute base URL of the browser client, used to build confirmation and reset links.
+    /// Required. The trusted browser-client base URL used to build confirmation and reset
+    /// links.
     /// </summary>
     /// <remarks>
-    /// When empty the link is derived from the incoming request, which is only safe where
-    /// the host header is trusted. Deployed environments must set this explicitly.
+    /// Validated at startup by <see cref="AuthOptionsValidator"/>. Never inferred from the
+    /// request's Host/Scheme — that header is attacker-controlled, so a link built from it
+    /// could point at an attacker's domain while still being mailed to the account holder.
     /// </remarks>
     public string? ClientBaseUrl { get; set; }
 
