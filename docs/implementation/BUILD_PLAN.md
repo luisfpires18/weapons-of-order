@@ -52,7 +52,7 @@ No production gameplay feature should be added as part of Task 0.
 
 ## Task 1 - Browser application foundation + CI
 
-**Status: THIS BRANCH / AWAITING REVIEW**
+**Status: MERGED**
 
 ### Goal
 
@@ -139,6 +139,8 @@ A developer/agent can:
 ---
 
 ## Task 2 - Login + account security
+
+**Status: THIS BRANCH / AWAITING REVIEW**
 
 ### Goal
 

@@ -205,6 +205,69 @@ At minimum, auth implementation tasks should verify:
 
 Use the `webapp-testing` skill for end-to-end browser verification in addition to focused backend/frontend tests.
 
+## Browser V1 as implemented
+
+This section records the concrete choices made where the architecture above left a
+configuration decision open. It is a description of the current implementation, not a new
+constraint: thresholds and names remain tunable.
+
+Session cookie:
+- name `woo.session`, `HttpOnly`, `Path=/`, essential;
+- `SameSite=Lax` — client and API share one origin so no legitimate request is cross-site,
+  while a plain link into the game still arrives signed in;
+- `Secure` always outside Development, `SameAsRequest` in Development so local plain-http
+  works;
+- 14-day sliding expiration;
+- unauthenticated API calls answer `401` with ProblemDetails rather than redirecting to an
+  HTML login page.
+
+Antiforgery:
+- ASP.NET Core antiforgery, cookie `woo.antiforgery` (`HttpOnly`), request token echoed in
+  the `X-WoO-Antiforgery` header;
+- the request token is published by `GET /api/auth/session`, which a cross-site page cannot
+  read;
+- validated by an endpoint filter applied to the whole mutating route group, including the
+  unauthenticated flows, because login CSRF is a real attack and a uniform rule is easier to
+  keep correct than an exemption list.
+
+Email confirmation:
+- required before a session can be established, configurable through
+  `Auth:RequireConfirmedEmailForSignIn`;
+- enforced by the login endpoint **after** the password check, not through
+  `IdentityOptions.SignIn.RequireConfirmedAccount`. Identity's own check runs before the
+  password is verified, which would let anyone discover which addresses are registered.
+
+Account link origin:
+- built only from `Auth:ClientBaseUrl`, which must be an absolute https origin, or http for
+  a loopback host during local development, carrying no query or fragment;
+- **never** derived from the request. The `Host` header is attacker-controlled, so a link
+  built from it could point at the attacker's domain and still be mailed to the account
+  holder;
+- validated at startup, so a deployment without one refuses to boot rather than discovering
+  it on somebody's first password reset — a failure that appeared only for addresses that
+  exist would itself be an account-existence oracle.
+
+Development email delivery:
+- no production provider is configured yet;
+- in the Development environment only, confirmation and reset links are captured in a
+  bounded in-memory outbox and published by `GET /api/dev/account-notifications`;
+- links and tokens are **never** written to a log, in any environment, including
+  Development: logs are copied, shipped and retained in places the in-memory outbox is not;
+- every other environment uses a sender that records only that a message was dropped;
+- the public responses are identical either way, so the capture does not change what the API
+  discloses.
+
+Current thresholds (all configuration under `Auth`):
+- password: 12 characters minimum, 4 unique, no character-class requirements;
+- lockout: 5 failed attempts, 15 minutes;
+- rate limits per caller address: login 10 per 5 minutes, registration 5 per 15 minutes,
+  password reset and confirmation resend 5 per 15 minutes.
+
+Deployment still has to set:
+- forwarded-header handling, so rate-limit partitions see the real caller behind a proxy;
+- a real email delivery provider. Until one exists, no confirmation or reset message leaves
+  a non-Development environment.
+
 ## Explicitly deferred
 
 - Steam login/linking;

@@ -11,8 +11,10 @@ the source-of-truth order. This file covers only how to run and validate the cod
 web/                                  React + TypeScript + Vite client
 server/
   src/WeaponsOfOrder.Api/             ASP.NET Core host, endpoints, configuration
+    Auth/                             Accounts, sessions, account notifications
+    Security/                         Antiforgery and authorization conventions
   src/WeaponsOfOrder.Infrastructure/  EF Core / PostgreSQL persistence and migrations
-  tests/WeaponsOfOrder.Api.Tests/     API and configuration tests
+  tests/WeaponsOfOrder.Api.Tests/     API, account and configuration tests
 art/                                  Shared art, aliased into the client as @art
 docker-compose.yml                    Local development PostgreSQL
 ```
@@ -106,21 +108,68 @@ dotnet ef migrations add <Name> --project server/src/WeaponsOfOrder.Infrastructu
 dotnet ef database update --project server/src/WeaponsOfOrder.Infrastructure --startup-project server/src/WeaponsOfOrder.Api
 ```
 
+## Accounts
+
+Sign-in is email + password on ASP.NET Core Identity, with the session held in an
+`HttpOnly` cookie. There is no token in `localStorage`, and mutating requests carry an
+antiforgery token in the `X-WoO-Antiforgery` header, which the client reads from
+`GET /api/auth/session`. Full rules are in
+[`AUTH_SECURITY.md`](docs/architecture/AUTH_SECURITY.md).
+
+A confirmed email address is required before sign-in. **No email provider is configured
+yet**, so in development the confirmation and reset links are captured in memory instead of
+sent: `GET /api/dev/account-notifications` lists the most recent ones, and the auth screens
+show an "Open the captured link" action.
+
+Both exist **only** when the API runs in the Development environment, and
+`Auth:Development:ExposeNotifications` switches the endpoint off. A link is a bearer
+credential, so it is never written to a log in any environment; every environment other than
+Development drops the message and records only that it did.
+
+`Auth:ClientBaseUrl` must be set to the absolute origin of the browser client — https, or
+http only for a loopback host. The application refuses to start without it. Account links are
+never built from the request, because the `Host` header is attacker-controlled.
+
+Other security settings — password policy, lockout, rate limits, cookie lifetime — live under
+the `Auth` section of `appsettings.json`.
+
 ## Validation
 
-The same checks [CI](.github/workflows/ci.yml) runs.
-
-Client:
-
-```bash
-pnpm --dir web lint && pnpm --dir web typecheck && pnpm --dir web test && pnpm --dir web build
-```
-
-Server:
+The same checks [CI](.github/workflows/ci.yml) runs. Backend first — it needs PostgreSQL
+running, because the account tests exercise Identity against the real provider and migrate
+their own `weapons_of_order_tests` database on first use:
 
 ```bash
-dotnet format server/WeaponsOfOrder.slnx --verify-no-changes && dotnet build server/WeaponsOfOrder.slnx && dotnet test server/WeaponsOfOrder.slnx
+dotnet format server/WeaponsOfOrder.slnx --verify-no-changes
 ```
+
+```bash
+dotnet build server/WeaponsOfOrder.slnx --configuration Release
+```
+
+```bash
+dotnet test server/WeaponsOfOrder.slnx --configuration Release
+```
+
+Frontend:
+
+```bash
+pnpm --dir web lint
+```
+
+```bash
+pnpm --dir web typecheck
+```
+
+```bash
+pnpm --dir web test
+```
+
+```bash
+pnpm --dir web build
+```
+
+To point the backend tests at a different database, set `WOO_TEST_CONNECTION_STRING`.
 
 ## PWA
 

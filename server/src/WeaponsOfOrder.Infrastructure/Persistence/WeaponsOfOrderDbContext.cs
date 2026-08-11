@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using WeaponsOfOrder.Infrastructure.Identity;
 
 namespace WeaponsOfOrder.Infrastructure.Persistence;
 
@@ -6,12 +8,17 @@ namespace WeaponsOfOrder.Infrastructure.Persistence;
 /// Single persistence context for the modular monolith.
 /// </summary>
 /// <remarks>
-/// Task 1 deliberately declares no entities. Identity tables arrive with Task 2 and
-/// gameplay tables with the tasks that own those systems; inventing them here would
-/// bake guesses into the schema before the design authority calls for them.
+/// Task 2 adds the Identity account tables. The base type is
+/// <see cref="IdentityUserContext{TUser, TKey}"/> rather than <c>IdentityDbContext</c>
+/// because Browser V1 has no roles: an admin/staff authorization model is explicitly
+/// deferred, and the role tables would be dead schema until a real admin feature exists.
+/// <para>
+/// Gameplay tables still arrive with the tasks that own those systems; inventing them
+/// here would bake guesses into the schema before the design authority calls for them.
+/// </para>
 /// </remarks>
 public sealed class WeaponsOfOrderDbContext(DbContextOptions<WeaponsOfOrderDbContext> options)
-    : DbContext(options)
+    : IdentityUserContext<WeaponsOfOrderUser, Guid>(options)
 {
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
