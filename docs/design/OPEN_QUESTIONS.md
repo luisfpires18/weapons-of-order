@@ -22,7 +22,9 @@ These values remain tuning work and should generally be balanced through impleme
 - minimum Attack Interval floor;
 - specific weapon range exceptions beyond current defaults;
 - normal crafting costs/quality thresholds;
-- Runeforging/recoil probabilities where structure is already defined.
+- Runeforging/recoil probabilities where structure is already defined;
+- exact maximum battle duration;
+- exact no-progress window duration.
 
 Current Power scale, Defense constant, Energy gain, Heavy coefficient, and Crit multiplier are v1 tunable balance values rather than permanent sacred numbers.
 
@@ -44,16 +46,21 @@ Targeting foundation is locked:
 
 Equal shortest paths likewise require no additional gameplay preference; deterministic pathfinder ordering is implementation detail.
 
-Battle-end foundation is locked:
+Battle-end and simulation-termination foundation is locked:
 - defeat occurs only when every active Unit and every reserve Unit is dead;
 - a living reserve blocked from entering is not defeated and prevents army defeat;
-- simultaneous elimination of both armies is a Draw.
+- simultaneous attacks at the same authoritative timestamp resolve as one batch from the pre-batch state;
+- a Unit killed in that batch still completes its already-valid same-timestamp attack;
+- simultaneous elimination of both armies is a Draw;
+- every battle has a configurable hard maximum simulated duration and no-progress window;
+- if either guard expires while neither army is defeated, the result is a Draw;
+- timeout/stalemate never reclassifies a living Unit or blocked reserve as dead;
+- v1 progress means HP change, Unit death, or successful reserve entry; movement/retargeting/pathing/failed entry attempts do not reset the no-progress window.
 
 Still unresolved but not required before the first combat prototype:
 - exact movement timing values for Mounted vs non-Mounted Units;
 - future special targeting overrides such as Assassin-style behavior;
 - exact reinforcement entry delay;
-- timeout/overtime/stalemate behavior when living Units or reserves cannot make progress;
 - exact progressive event-delivery/network protocol for competitive multiplayer.
 
 ## Units and classes
