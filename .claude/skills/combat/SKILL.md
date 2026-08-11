@@ -1,6 +1,6 @@
 ---
 name: combat
-description: Weapons of Order autobattler battlefield, hex movement, collision, targeting, range, combat stats, damage math, Energy/Heavy/L1/L2 attack progression, weapon timing, deployment limits, reserves, and server-authoritative deterministic simulation. Use whenever work touches battle rules, pathing, targeting, replay architecture, reinforcement flow, weapon attack behavior, or combat math.
+description: Weapons of Order autobattler battlefield, hex movement, collision, targeting, range, combat stats, damage math, Energy/Heavy/L1/L2 attack progression, weapon timing, deployment limits, reserves, deterministic battle termination, simultaneous attack resolution, and server-authoritative deterministic simulation. Use whenever work touches battle rules, pathing, targeting, replay architecture, reinforcement flow, weapon attack behavior, or combat math.
 ---
 
 # Combat
@@ -31,7 +31,9 @@ Also read:
 - A blocked reserve waits alive; another reserve may enter if it has an open active slot and unblocked assigned entry.
 - An army is defeated only when every active Unit and every reserve Unit is dead.
 - A living blocked reserve prevents defeat.
-- If both armies lose all remaining Units in the same authoritative resolution, the result is a Draw.
+- If both armies lose all remaining Units in the same authoritative timestamp batch, the result is a Draw.
+- A battle may never simulate forever: a configurable maximum simulated duration and configurable no-progress window both terminate an otherwise unresolved fight as a Draw.
+- A timeout/stalemate Draw does not kill, remove, or reinterpret surviving active Units or blocked reserves.
 
 ## Universal combat stats
 
@@ -92,12 +94,36 @@ Autos and ordinary Heavy attacks can crit. Rune-specific L1/L2 effects/coefficie
 
 L3 combat behavior is deferred.
 
+## Deterministic timing and termination
+
+The simulation uses an authoritative combat clock.
+
+Attacks with the same authoritative timestamp resolve as one simultaneous batch:
+- eligibility is determined from the state immediately before that timestamp;
+- every already-valid attack in the batch resolves even if its attacker is killed by another attack in the same batch;
+- damage/effects are calculated from the same pre-batch state and then applied together;
+- deaths are resolved after the batch is applied;
+- if both armies are fully eliminated by that batch, the result is a Draw.
+
+Stable implementation ordering may be used inside a batch for deterministic RNG consumption/event serialization, but must not give one same-timestamp attack first-strike survival priority over another.
+
+Finite simulation guards:
+- configurable maximum simulated battle duration;
+- configurable no-progress window.
+
+For v1, progress means an HP change, a Unit death, or a reserve successfully entering the battlefield. Movement, retargeting, path recalculation, and blocked reserve-entry attempts do not reset the no-progress window.
+
+After each timestamp batch, resolve ordinary victory/defeat first. If neither side is defeated and a termination guard has expired, end the battle as a Draw while preserving all surviving Unit/reserve state.
+
+Exact duration values are tuning/configuration, not permanent canon.
+
 ## Architecture
 
 - Server is authoritative.
 - Simulation is deterministic from the authoritative battle snapshot/seed.
 - The server may resolve faster than real time while the client progressively reveals the event timeline.
 - For an MVP, returning the full battle log at once is acceptable.
+- Pre-resolution must always terminate through defeat, simultaneous elimination Draw, or the finite simulation guards.
 
 ## Do not invent
 
@@ -110,6 +136,7 @@ Keep these unresolved unless the creator explicitly decides them:
 - exact Rune-specific L1/L2 combat effects
 - special targeting overrides
 - exact reinforcement delay
-- timeout/overtime/stalemate behavior
 - shield Block or Dodge mechanics
 - exact progressive-delivery/network implementation
+
+The exact maximum-duration and no-progress-duration numbers remain configurable balance values; their existence and Draw outcome are locked.
