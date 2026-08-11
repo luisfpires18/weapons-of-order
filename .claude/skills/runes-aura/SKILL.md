@@ -15,8 +15,6 @@ Read `references/chaos-order-weapon-roster.md` when named Weapons of Chaos/Order
 
 Read `.claude/skills/units/references/weapon-registry.md` when Aura/mastery interacts with weapon types, dual wielding, paired Runeforged weapons, weapon categories, or loadout compatibility.
 
-Read `docs/design/SOURCE_CORRECTIONS.md` before reusing rules directly from the older `rune_list.md`, `aura_levels.md`, `runeforged_weapons.md`, or `weapons_of_chaos_and_order.md` source files.
-
 ## Authority
 
 Do not invent a Rune, fusion result, corrupted/purified Rune, rarity, color, uniqueness rule, class name, or forced weapon transformation.
