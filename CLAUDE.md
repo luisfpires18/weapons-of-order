@@ -24,8 +24,6 @@ A newer explicit creator decision overrides an older draft or implementation.
 
 Never infer that existing code is canon merely because it exists.
 
-Older rune/Aura/weapon source files must be interpreted through `docs/design/SOURCE_CORRECTIONS.md` when reused.
-
 ## Required implementation context
 
 Before substantial implementation work, read the documents relevant to the task rather than loading everything.
