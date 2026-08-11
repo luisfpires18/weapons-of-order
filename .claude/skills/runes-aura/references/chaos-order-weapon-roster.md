@@ -1,6 +1,6 @@
 # Weapons of Order: Chaos & Order Weapon Roster Reference
 
-This file preserves the named high-tier weapon roster from the creator's `weapons_of_chaos_and_order.md` source while applying current Rune spelling/structure corrections.
+This file preserves the current named high-tier weapon roster and WIP concepts derived from the creator's `weapons_of_chaos_and_order.md` source, updated to current Rune/Aura canon.
 
 It is a roster/concept reference, **not** a completed L3 gameplay specification.
 
@@ -18,26 +18,25 @@ Current named concepts:
 | Pestilence | Bow | Plague (Poison + Chaos) | Infection and contagious plague arrows. |
 | Calamur | Gauntlets | Destruction (Force + Chaos) | Explosive/concussive Aura shock through punches. |
 | Ashbrand | Spear | Magma (Lava + Chaos) | Molten/lava eruption concept; may be thrown or used in close quarters. |
-| Victura | Scythe | **Necro** (Spirit + Chaos) | Necromancy/soul-harvest concept with temporary skeletal servants. |
+| Victura | Scythe | Necro (Spirit + Chaos) | Necromancy/soul-harvest concept with temporary skeletal servants. |
 | Wanegrip | Staff | Psychic (Mind + Chaos) | Mental fracture, false orders, perception/intent manipulation. |
-| Vantashields | Dual Shields | **Meteorite** (Obsidian + Chaos) | Impact storage, thrown-shield/meteor-path and shrapnel concept. |
+| Vantashields | Dual Shields | Meteorite (Obsidian + Chaos) | Impact storage, thrown-shield/meteor-path and shrapnel concept. |
 | Thricefang | Claw Gauntlets | Monstrosity (Animal + Chaos; source concept specifically Cerberus/Mythical) | Multi-hit/fear/Aura-drain concept. |
-| Ruincoils | Whips | **WIP conflict: Entropy (Circuit + Chaos)** | Source concept uses electrical/circuit feedback, but Entropy is not currently in the canonical Corrupted Rune registry. Do not add it silently. |
+| Ruincoils | Whips | Entropy (Circuit + Chaos) | Electrical/circuit feedback and destabilization concept. Entropy is a canonical late-game Technic-derived Corrupted Rune. |
 | Boreal Halos | Dual Chakram | Aurora (Light + Chaos) | Prismatic/auroral crossing arcs, glare and disorientation concept. |
 
-### Corrections from older source wording
-
-- Victura: use `Necro`, not `Necrosis`.
-- Vantashields: use `Meteorite`, not `Metorite`.
+Current spellings/derivations:
+- Victura uses `Necro`, not older `Necrosis`.
+- Vantashields uses `Meteorite`, not `Metorite`.
 - Hail derives from `Ice + Chaos`; there is no separate canonical Frost Rune.
-- `Monstrosity` is canonically derived from Any Animal + Chaos. Thricefang's Cerberus identity is a weapon-specific source concept, not a restriction on the derived Rune itself.
-- Ruincoils/Entropy remains unresolved and must stay WIP.
+- `Monstrosity` derives from Any Animal + Chaos. Thricefang's Cerberus identity is a weapon-specific example, not a restriction on Monstrosity.
+- `Entropy` derives from Circuit + Chaos.
 
 ## Weapons of Order
 
-The Order roster is explicitly less complete than the Chaos roster.
+The Order roster is intentionally less complete than the Chaos roster.
 
-Current named concepts from the source:
+Current named concepts:
 
 | Weapon | Base weapon/form | Purified Rune | Current status / concept |
 |---|---|---|---|
@@ -46,22 +45,25 @@ Current named concepts from the source:
 | Harmony | Dual Crossbows | Energy (Lightning + Order) | Alternating precision volley and anti-corrupted-Aura concept. |
 | Everbloom | Quarterstaff | Wood (Life + Order) | Living growth/binding/gentle renewal concept. |
 | Prismglaive | Glaive | Quartz (Crystal + Order) | Refraction/clarity/illusion-break concept. |
-| Bulwarkers | Pummelers | **WIP conflict: Protect (Fortitude + Order)** | Mitigation/counter concept, but `Protect` is not currently in the canonical Purified Rune registry. |
-| Skyrend Talons | Claw Gauntlets | Ascendant (Animal + Order) | Grace/aerial-control concept. Source gives a Horse -> Pegasus example/variant; treat that as weapon-specific draft detail. |
-| Tempestrike | Not yet authored | Tempest (Wind + Order) | Name exists; weapon/domain/traits remain WIP in source. |
-| Unnamed Steel weapon | Not yet authored | Steel (Iron + Order) | WIP. |
+| Skyrend Talons | Claw Gauntlets | Ascendant (Any Animal + Order) | Grace/aerial-control concept. Horse -> Pegasus is one example manifestation, not the definition of Ascendant. |
+| Tempestrike | WIP | Tempest (Wind + Order) | Name exists; weapon/form and final traits remain WIP. |
+| Unnamed Steel weapon | WIP | Steel (Iron + Order) | WIP. |
 
-The source also contains unfinished Gravity + Order and Magnet + Order placeholders. These are **not** current canonical Purified Rune entries and must not be completed or named automatically.
+`Protect (Fortitude + Order)` is outdated and is not a current Purified Rune. The old Bulwarkers/Protect concept is therefore not part of the current roster.
 
-### Order soul correction
+Additional Order derivations intentionally remain WIP and unnamed:
+- Gravity + Order
+- Magnet + Order
 
-Older source prose says Weapons of Order contain no soul.
+Do not name or complete those derivations automatically.
 
-That statement is superseded by the current high-tier structure:
+## Order soul rule
 
-- Chaos/Order weapons involve blood + soul at the high-tier Runeforging stage;
-- exact soul mechanics/consequences remain WIP;
-- do not invent whether Order uses sacrifice, entrapment, resonance, release, or another mechanism until explicitly decided.
+Chaos/Order weapons involve blood + soul at the high-tier Runeforging stage.
+
+For Order specifically, the exact soul mechanism/consequences remain WIP.
+
+Do not invent whether Order uses sacrifice, entrapment, resonance, release, transformation, or another mechanism until explicitly decided.
 
 ## Aura/L3 boundary
 
