@@ -11,9 +11,21 @@ Read `references/rune-registry.md` when exact Rune names, families, fusion resul
 
 Read `references/aura-visual-reference.md` when work needs Conduit/Aspect visual language, body/weapon manifestation themes, or temporary Rune-effect direction. Treat it as visual/thematic reference rather than locked combat numbers.
 
-Read `references/chaos-order-weapon-roster.md` when named Weapons of Chaos/Order or their source concepts matter. L3 gameplay and soul consequences remain deferred/WIP.
+Read `references/chaos-order-weapon-roster.md` when named Weapons of Chaos/Order or their current roster concepts matter. L3 gameplay and soul consequences remain deferred/WIP.
 
 Read `.claude/skills/units/references/weapon-registry.md` when Aura/mastery interacts with weapon types, dual wielding, paired Runeforged weapons, weapon categories, or loadout compatibility.
+
+## Preserved creator source drafts
+
+The detailed original creator files are preserved under `references/source-drafts/`:
+- `rune_list.md`
+- `aura_levels.md`
+- `runeforged_weapons.md`
+- `weapons_of_chaos_and_order.md`
+
+Read them when the task needs original detailed prose, regional Rune notes, visual inspiration, or historical source context that has not been copied into the compact canonical references.
+
+**They are lower authority than the canonical references above.** They intentionally preserve older wording and may contain superseded names/mechanics. Never use a source draft to undo a newer decision in `rune-canon.md`, `rune-registry.md`, `aura-visual-reference.md`, `chaos-order-weapon-roster.md`, the weapon registry, or the Blacksmithing canon.
 
 ## Authority
 
