@@ -223,6 +223,45 @@ For significant frontend tasks:
 
 Unit/component tests do not replace browser inspection for layout work.
 
+## Browser V1 shell as implemented
+
+This section records the concrete choices Task 3 made where the layout above left an
+implementation decision open. It describes the current shell; it is not a new constraint,
+and the tokens named here remain tunable.
+
+Routes behind the session guard:
+- `/world` — the authenticated home. `ENTER WORLD` on the title screen points here, and the
+  guard is what sends a visitor without a session to `/login` with a safe return target.
+- `/account` — account and settings.
+
+Every other path, including the removed `/hub`, `/barracks`, `/arrange`, `/dungeon`,
+`/vault`, `/ladder` and `/forge`, resolves as not found. None of them redirect.
+
+Navigation:
+- one `<nav aria-label="Primary">` element, presented as a left column from `lg` and as a
+  bottom bar below it — not two navigations kept in step with each other;
+- game destinations come from `GAME_DESTINATIONS` in `web/src/shell/destinations.ts`, in
+  order. Adding Forge, Units, Inventory or Battle means one entry there and one route in
+  `App.tsx`; the shell counts nothing and assumes no particular number;
+- Account is held separately and pinned to the end of the desktop column so it stays put as
+  that list grows;
+- the current destination is marked with `aria-current="page"` and by lighting its own
+  length of the hairline between navigation and content.
+
+Chrome:
+- a top bar carrying the wordmark, which links home, and — from `lg` — an account
+  disclosure holding the email, a link to Account, and Sign out;
+- below `lg` the top bar is a compact header that names the current destination instead,
+  and the account controls live on the Account screen, one tap from the bottom bar;
+- shell metrics are two custom properties on the shell root, `--shell-header` and
+  `--shell-nav`, both folding in the device safe-area insets.
+
+Shell states:
+- session pending renders a quiet centred line and nothing of the shell, so no protected
+  content is drawn before the server has answered;
+- a session that cannot be read renders an error with a retry rather than pretending the
+  player was signed out.
+
 ## Things not to decide prematurely
 
 Do not lock yet:
