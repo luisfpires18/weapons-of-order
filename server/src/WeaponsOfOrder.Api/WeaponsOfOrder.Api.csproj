@@ -22,4 +22,14 @@
     <ProjectReference Include="..\WeaponsOfOrder.Infrastructure\WeaponsOfOrder.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Creator-authored game content. It lives at server/content so it reads as content
+         rather than as another settings file, and is copied beside the built application so a
+         published deployment carries it. During development the repository copy is what the
+         API reads, so an edit there takes effect without a rebuild. -->
+    <Content Include="..\..\content\**\*.json" Link="content\%(RecursiveDir)%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

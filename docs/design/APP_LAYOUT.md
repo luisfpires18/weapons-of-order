@@ -282,6 +282,44 @@ Recorded for the same reason as the section above: these are Task 4's choices, n
 - craftsmanship is the headline of the finished state, because it is the only thing about the
   sword the player changed.
 
+## Inventory and Units screens as implemented
+
+Recorded for the same reason as the sections above: these are Task 5's choices, not new rules.
+
+Navigation now carries World, Forge, Inventory, Units and Account. That is five on the mobile
+bar, which is the upper end of what this document asks for — the labels are set a size down and
+in the condensed HUD face below `lg` so none of them wraps at 390px. A sixth destination is
+where the rest should start moving behind a More surface rather than being squeezed further.
+
+Inventory:
+- one list, not a grid of cards. Each row carries craftsmanship and name, then weapon type,
+  provenance and when it was forged, and ends with where the item currently is — the only part
+  that changes while the player prepares, so it is what the eye can run down;
+- two columns from `sm`, stacked below it;
+- no search, sorting, filtering or pagination. With one forgeable weapon they would be controls
+  that do nothing;
+- a header line counts what is owned and how much of it is in hand. Nothing else is totalled,
+  because nothing else exists to total.
+
+Units:
+- roster and workspace, `15rem` and the rest from `lg`, with the workspace behind a hairline;
+- below `lg` the roster becomes a row of selectors above the workspace. It wraps rather than
+  scrolls, so a longer roster or a longer authored name grows downward instead of sideways;
+- the selected entry lights its own length of the boundary in ember — the same device the
+  primary navigation uses for the current destination, running under the row and down the
+  column;
+- the selection lives in a `?unit=` search parameter, so a reload, a shared link and the back
+  button all land where the player was;
+- the two weapon slots are hairline panels labelled First hand and Second hand, dashed while
+  empty. A two-slot weapon collapses them into one panel labelled Both hands rather than
+  appearing twice;
+- an available weapon offers one button per hand, disabled when that hand is full, so choosing
+  where a weapon goes is a single press and a full hand is visible rather than an error
+  afterwards;
+- what a unit is shows only what the content actually says: kingdom, fixed tier as stars,
+  armour limit, and Mounted. There is no class, specialisation, level, experience or power
+  rating anywhere on the screen, because the creator has not authored any of them.
+
 ## Things not to decide prematurely
 
 Do not lock yet:
