@@ -12,8 +12,10 @@ web/                                  React + TypeScript + Vite client
 server/
   src/WeaponsOfOrder.Api/             ASP.NET Core host, endpoints, configuration
     Auth/                             Accounts, sessions, account notifications
+    Forge/                            Ordinary forging: rules, balance data, endpoints
     Security/                         Antiforgery and authorization conventions
   src/WeaponsOfOrder.Infrastructure/  EF Core / PostgreSQL persistence and migrations
+    Gameplay/                         Player-owned game entities
   tests/WeaponsOfOrder.Api.Tests/     API, account and configuration tests
 art/                                  Shared art, aliased into the client as @art
 docker-compose.yml                    Local development PostgreSQL
@@ -132,6 +134,22 @@ never built from the request, because the `Host` header is attacker-controlled.
 
 Other security settings — password policy, lockout, rate limits, cookie lifetime — live under
 the `Auth` section of `appsettings.json`.
+
+## The forge
+
+`/forge` is the first playable system: choose a recipe, pay its materials, heat the workpiece,
+strike it, and keep what you made. The server owns all of it — the browser can ask to start
+heating, to stop, or to strike, and nothing else. It never submits a temperature, a heat band,
+a craftsmanship or an owner.
+
+Everything tunable about it lives under the `Forge` section of `appsettings.json`: the recipe
+catalogue, the heat scale and rates, how many blows a weapon takes, the quality thresholds and
+the opening material stock. **Those values are prototype balance data, not canon.** The
+structure they sit inside — Metal/Wood/Leather, the four heat bands, one Strike action,
+Common/Rare/Epic — comes from `.claude/skills/blacksmithing/`.
+
+Materials are granted the first time a player opens the forge, because no economy exists yet.
+That grant is one method in `ForgeService` and is meant to be replaced by a real source.
 
 ## Validation
 

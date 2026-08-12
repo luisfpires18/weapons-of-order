@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router";
 import { WORLD_PATH } from "@/auth/redirect";
 import { RequireAnonymous, RequireAuth } from "@/auth/RouteGuards";
 import { AccountScreen } from "@/screens/AccountScreen";
+import { ForgeScreen } from "@/screens/ForgeScreen";
 import { NotFoundScreen } from "@/screens/NotFoundScreen";
 import { TitleScreen } from "@/screens/TitleScreen";
 import { WorldScreen } from "@/screens/WorldScreen";
@@ -10,14 +11,16 @@ import { ForgotPasswordScreen } from "@/screens/auth/ForgotPasswordScreen";
 import { LoginScreen } from "@/screens/auth/LoginScreen";
 import { RegisterScreen } from "@/screens/auth/RegisterScreen";
 import { ResetPasswordScreen } from "@/screens/auth/ResetPasswordScreen";
-import { ACCOUNT_PATH } from "@/shell/destinations";
+import { ACCOUNT_PATH, FORGE_PATH } from "@/shell/destinations";
 import { ShellLayout } from "@/shell/ShellLayout";
 
-// Task 1 removed the pre-Browser-V1 placeholder routes (/hub, /barracks, /forge,
-// /arrange, /dungeon, /vault, /ladder), and neither Task 2 nor Task 3 brings any of them
-// back — not even as a redirect, because a redirect claims there is a current destination
-// the old name meant, and there is not. They fall to the catch-all and resolve as not found.
-// /forge stays that way until Task 4 builds the real Forge.
+// Task 1 removed the pre-Browser-V1 placeholder routes (/hub, /barracks, /arrange, /dungeon,
+// /vault, /ladder), and nothing since has brought any of them back — not even as a redirect,
+// because a redirect claims there is a current destination the old name meant, and there is
+// not. They fall to the catch-all and resolve as not found.
+//
+// /forge was in that set until Task 4. It is a real destination now, and the route below is
+// the actual forge rather than a revival of the placeholder that used to answer there.
 export function App() {
   return (
     <Routes>
@@ -42,6 +45,7 @@ export function App() {
       <Route element={<RequireAuth />}>
         <Route element={<ShellLayout />}>
           <Route path={WORLD_PATH} element={<WorldScreen />} />
+          <Route path={FORGE_PATH} element={<ForgeScreen />} />
           <Route path={ACCOUNT_PATH} element={<AccountScreen />} />
         </Route>
       </Route>

@@ -1,5 +1,6 @@
 using WeaponsOfOrder.Api.Auth;
 using WeaponsOfOrder.Api.Auth.Notifications;
+using WeaponsOfOrder.Api.Forge;
 using WeaponsOfOrder.Api.Health;
 using WeaponsOfOrder.Infrastructure;
 using WeaponsOfOrder.Infrastructure.Persistence;
@@ -9,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddProblemDetails();
 builder.Services.AddWeaponsOfOrderPersistence(builder.Configuration);
 builder.Services.AddWeaponsOfOrderAuth(builder.Configuration, builder.Environment);
+builder.Services.AddWeaponsOfOrderForge(builder.Configuration);
 
 builder.Services
     .AddHealthChecks()
@@ -35,6 +37,7 @@ app.UseAntiforgery();
 
 app.MapWeaponsOfOrderHealthChecks();
 app.MapWeaponsOfOrderAuth();
+app.MapWeaponsOfOrderForge();
 
 if (app.Environment.IsDevelopment())
 {

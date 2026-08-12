@@ -2,6 +2,8 @@ import { WORLD_PATH } from "@/auth/redirect";
 
 export const ACCOUNT_PATH = "/account";
 
+export const FORGE_PATH = "/forge";
+
 export type ShellDestination = {
   /** The route this destination owns. One destination, one path. */
   path: string;
@@ -12,15 +14,16 @@ export type ShellDestination = {
 /**
  * The game destinations the primary navigation offers, in the order it offers them.
  *
- * There is one, because one exists. Forge, Units, Inventory and Battle are Tasks 4-6 and are
- * absent rather than present-and-disabled: a control that cannot be used is worse than no
- * control, and a menu padded out with future systems misrepresents what the game can do.
+ * There are two, because two exist. Units, Inventory and Battle are Tasks 5-6 and are absent
+ * rather than present-and-disabled: a control that cannot be used is worse than no control,
+ * and a menu padded out with future systems misrepresents what the game can do.
  *
  * Adding a destination later means adding an entry here and a route in `App.tsx`. Nothing in
- * the shell counts these or assumes there is only one.
+ * the shell counts these or assumes any particular number.
  */
 export const GAME_DESTINATIONS: readonly ShellDestination[] = [
   { path: WORLD_PATH, label: "World" },
+  { path: FORGE_PATH, label: "Forge" },
 ];
 
 /**
