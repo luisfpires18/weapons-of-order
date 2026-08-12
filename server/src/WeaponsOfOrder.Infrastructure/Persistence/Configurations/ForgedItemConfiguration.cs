@@ -30,7 +30,12 @@ internal sealed class ForgedItemConfiguration : IEntityTypeConfiguration<ForgedI
             .HasForeignKey<ForgedItem>(item => item.ForgeSessionId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Newest first is how the forge screen lists them.
+        // Newest first is how the forge screen and the inventory list them.
         builder.HasIndex(item => new { item.OwnerUserId, item.ForgedAt });
+
+        // Principal side of the composite foreign key on EquippedWeapons, added by Task 5. It
+        // carries the owner along with the item so that equipping cannot pair one account's
+        // sword with another account's Unit. Nothing about the item itself changes.
+        builder.HasAlternateKey(item => new { item.Id, item.OwnerUserId });
     }
 }

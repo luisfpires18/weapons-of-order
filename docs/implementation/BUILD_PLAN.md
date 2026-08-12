@@ -263,7 +263,7 @@ Browser sweep at minimum:
 
 ## Task 4 - Forge vertical slice + minimal inventory seam
 
-**Status: THIS BRANCH / AWAITING CREATOR REVIEW**
+**Status: MERGED**
 
 ### Goal
 
@@ -305,6 +305,8 @@ This is the first proof that the application foundation supports actual gameplay
 
 ## Task 5 - Inventory + Units + equipment
 
+**Status: THIS BRANCH / AWAITING CREATOR REVIEW**
+
 ### Goal
 
 Turn the minimal Forge inventory seam into the first real preparation system and connect forged equipment to Units/loadouts.
@@ -321,7 +323,19 @@ Exact specialization names/loadout mappings remain configurable creator-authored
 
 Do not build the entire roster/acquisition/progression system merely to equip an item.
 
-Exact prompt is written after Task 4 exists.
+### What this branch built
+
+- creator-editable Unit and weapon content in `server/content/`, validated at startup and
+  reloaded on save, with the three placeholder Arkazia definitions the creator specified;
+- persistent player-owned Unit instances that reference a definition key rather than copying
+  the definition, granted once per account through a temporary starter grant;
+- persistent two-slot weapon loadouts held up by database constraints rather than by
+  look-before-you-write checks;
+- `/inventory` and `/units` behind the session guard, in desktop and mobile presentations;
+- the first cross-system loop: forge a sword, find it in the inventory, put it in a unit's
+  hands, and have it still be there after a reload and a fresh sign-in.
+
+Recruitment, progression, specialisation names, armour items and combat remain out of scope.
 
 ---
 

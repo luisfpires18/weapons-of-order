@@ -3,15 +3,17 @@ import { WORLD_PATH } from "@/auth/redirect";
 import { RequireAnonymous, RequireAuth } from "@/auth/RouteGuards";
 import { AccountScreen } from "@/screens/AccountScreen";
 import { ForgeScreen } from "@/screens/ForgeScreen";
+import { InventoryScreen } from "@/screens/InventoryScreen";
 import { NotFoundScreen } from "@/screens/NotFoundScreen";
 import { TitleScreen } from "@/screens/TitleScreen";
+import { UnitsScreen } from "@/screens/UnitsScreen";
 import { WorldScreen } from "@/screens/WorldScreen";
 import { ConfirmEmailScreen } from "@/screens/auth/ConfirmEmailScreen";
 import { ForgotPasswordScreen } from "@/screens/auth/ForgotPasswordScreen";
 import { LoginScreen } from "@/screens/auth/LoginScreen";
 import { RegisterScreen } from "@/screens/auth/RegisterScreen";
 import { ResetPasswordScreen } from "@/screens/auth/ResetPasswordScreen";
-import { ACCOUNT_PATH, FORGE_PATH } from "@/shell/destinations";
+import { ACCOUNT_PATH, FORGE_PATH, INVENTORY_PATH, UNITS_PATH } from "@/shell/destinations";
 import { ShellLayout } from "@/shell/ShellLayout";
 
 // Task 1 removed the pre-Browser-V1 placeholder routes (/hub, /barracks, /arrange, /dungeon,
@@ -46,6 +48,8 @@ export function App() {
         <Route element={<ShellLayout />}>
           <Route path={WORLD_PATH} element={<WorldScreen />} />
           <Route path={FORGE_PATH} element={<ForgeScreen />} />
+          <Route path={INVENTORY_PATH} element={<InventoryScreen />} />
+          <Route path={UNITS_PATH} element={<UnitsScreen />} />
           <Route path={ACCOUNT_PATH} element={<AccountScreen />} />
         </Route>
       </Route>

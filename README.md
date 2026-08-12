@@ -10,9 +10,12 @@ the source-of-truth order. This file covers only how to run and validate the cod
 ```text
 web/                                  React + TypeScript + Vite client
 server/
+  content/                            Creator-editable game content — see its README
   src/WeaponsOfOrder.Api/             ASP.NET Core host, endpoints, configuration
     Auth/                             Accounts, sessions, account notifications
+    Content/                          Loading and validating server/content
     Forge/                            Ordinary forging: rules, balance data, endpoints
+    Preparation/                      Inventory, Units and weapon loadouts
     Security/                         Antiforgery and authorization conventions
   src/WeaponsOfOrder.Infrastructure/  EF Core / PostgreSQL persistence and migrations
     Gameplay/                         Player-owned game entities
@@ -150,6 +153,32 @@ Common/Rare/Epic — comes from `.claude/skills/blacksmithing/`.
 
 Materials are granted the first time a player opens the forge, because no economy exists yet.
 That grant is one method in `ForgeService` and is meant to be replaced by a real source.
+
+## Inventory, units and equipment
+
+`/inventory` lists what a player owns and where each item is. `/units` is the preparation
+screen: pick one of your units, and put one of your own unequipped weapons into one of its two
+hands. Every unit has exactly two weapon slots, a weapon consumes one or two of them, and one
+physical item can be in one place at a time.
+
+The server owns all of it. The browser names a unit and an item; ownership comes from the
+session cookie, a unit or item belonging to somebody else is answered as one that does not
+exist, and the rules are held up by database constraints rather than by checks the service is
+trusted to remember — the equipment row's primary key is the item, and each hand has its own
+filtered unique index, so two requests racing for one slot cannot both win.
+
+Units are **not** defined in code. `server/content/units.json` holds the creator's Unit
+definitions and `server/content/weapons.json` holds the wield metadata equipping needs. A
+player-owned unit stores the definition's stable key and nothing else copied from it, so
+renaming a unit, changing its tier, its armour limit or its Mounted state is a content edit —
+no C# change, no React change, no EF migration. See
+[`server/content/README.md`](server/content/README.md) for how to edit and add definitions,
+and what happens when the content is wrong.
+
+Every account is granted one unit per definition marked `Starter: true`, once, on first read.
+That grant is a placeholder because recruitment does not exist yet, and it is recorded on the
+unit row separately from the definition key so an account can still hold duplicate copies of a
+Regular Unit later.
 
 ## Validation
 

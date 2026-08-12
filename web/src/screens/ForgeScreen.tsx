@@ -1,12 +1,14 @@
 import { useCallback } from "react";
+import { Link } from "react-router";
 import { ApiProblem } from "@/api/problem";
-import { FormNotice } from "@/components/auth/FormControls";
+import { FormNotice, INLINE_LINK_CLASSES } from "@/components/auth/FormControls";
 import type { ForgeRecipe, ForgeSession } from "@/forge/api";
 import { Anvil, BlowRow } from "@/forge/Anvil";
 import { CRAFTSMANSHIP_LABELS, CRAFTSMANSHIP_TEXT } from "@/forge/craftsmanship";
 import { AnvilAction, HoldToHeat, QuietAction, Strike } from "@/forge/ForgeActions";
 import { MaterialStock, RecentWork, RecipeCost } from "@/forge/ForgeRail";
 import { STRIKE_COOLDOWN_CODE, useForgeActions, useForgeState } from "@/forge/useForge";
+import { INVENTORY_PATH, UNITS_PATH } from "@/shell/destinations";
 import { ShellScreen } from "@/shell/ShellScreen";
 
 /**
@@ -143,7 +145,15 @@ function Finished({ session }: { session: ForgeSession }) {
       </p>
       <p className="font-display text-[1.25rem] uppercase tracking-[0.2em] text-bone">{session.name}</p>
       <p className="max-w-[32rem] font-body text-body leading-relaxed text-bone-dim">
-        It is yours and it is kept. You will equip it once units and loadouts exist.
+        It is yours and it is kept. Find it in your{" "}
+        <Link to={INVENTORY_PATH} className={INLINE_LINK_CLASSES}>
+          inventory
+        </Link>
+        , or give it to a{" "}
+        <Link to={UNITS_PATH} className={INLINE_LINK_CLASSES}>
+          unit
+        </Link>{" "}
+        to carry.
       </p>
     </div>
   );
