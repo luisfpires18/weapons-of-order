@@ -5,6 +5,7 @@ import { MemoryRouter, useLocation } from "react-router";
 import { vi } from "vitest";
 import { App } from "@/App";
 import type { Session } from "@/auth/session";
+import { fakeForge } from "@/testing/forge";
 
 /**
  * Reports the router's current URL. It sits beside the application rather than inside its
@@ -40,11 +41,22 @@ export type FetchMock = ReturnType<typeof vi.fn<typeof fetch>>;
  * than a screen in isolation is the point: what these tests are checking is the routing, the
  * guard and the shell together, which is where a mistake would actually let someone in.
  */
+/**
+ * Answers a request, or declines it by returning `undefined` so the default handling below
+ * takes over. This is how a test brings its own API for the screen it is exercising.
+ *
+ * A promise is a valid answer, which is what lets a test hold one request open and assert on
+ * what the client does — or refuses to do — while it is outstanding.
+ */
+export type ApiStub = (url: string, init?: RequestInit) => Response | Promise<Response> | undefined;
+
 export function renderApp(
   session: Session,
-  { at = "/world" }: { at?: string } = {},
+  { at = "/world", api }: { at?: string; api?: ApiStub } = {},
 ): { fetchMock: FetchMock } & RenderResult {
-  const fetchMock = vi.fn<typeof fetch>(async (input) => {
+  const forge = api ?? fakeForge().handle;
+
+  const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
 
     if (url.endsWith("/api/auth/session")) {
@@ -56,6 +68,11 @@ export function renderApp(
 
     if (url.startsWith("/api/auth/")) {
       return new Response(null, { status: 204 });
+    }
+
+    const answered = forge(url, init);
+    if (answered) {
+      return answered;
     }
 
     throw new Error(`unexpected request: ${url}`);

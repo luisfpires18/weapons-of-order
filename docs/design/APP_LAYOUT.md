@@ -226,23 +226,26 @@ Unit/component tests do not replace browser inspection for layout work.
 ## Browser V1 shell as implemented
 
 This section records the concrete choices Task 3 made where the layout above left an
-implementation decision open. It describes the current shell; it is not a new constraint,
-and the tokens named here remain tunable.
+implementation decision open, and what Task 4 added to them. It describes the current shell;
+it is not a new constraint, and the tokens named here remain tunable.
 
 Routes behind the session guard:
 - `/world` — the authenticated home. `ENTER WORLD` on the title screen points here, and the
   guard is what sends a visitor without a session to `/login` with a safe return target.
+- `/forge` — ordinary forging, added by Task 4.
 - `/account` — account and settings.
 
 Every other path, including the removed `/hub`, `/barracks`, `/arrange`, `/dungeon`,
-`/vault`, `/ladder` and `/forge`, resolves as not found. None of them redirect.
+`/vault` and `/ladder`, resolves as not found. None of them redirect. `/forge` was in that
+set until Task 4; the route that answers there now is the real forge, not a revival of the
+placeholder that used to hold the name.
 
 Navigation:
 - one `<nav aria-label="Primary">` element, presented as a left column from `lg` and as a
   bottom bar below it — not two navigations kept in step with each other;
 - game destinations come from `GAME_DESTINATIONS` in `web/src/shell/destinations.ts`, in
-  order. Adding Forge, Units, Inventory or Battle means one entry there and one route in
-  `App.tsx`; the shell counts nothing and assumes no particular number;
+  order — World, then Forge. Adding Units, Inventory or Battle means one entry there and one
+  route in `App.tsx`; the shell counts nothing and assumes no particular number;
 - Account is held separately and pinned to the end of the desktop column so it stays put as
   that list grows;
 - the current destination is marked with `aria-current="page"` and by lighting its own
@@ -261,6 +264,23 @@ Shell states:
   content is drawn before the server has answered;
 - a session that cannot be read renders an error with a retry rather than pretending the
   player was signed out.
+
+## Forge screen as implemented
+
+Recorded for the same reason as the section above: these are Task 4's choices, not new rules.
+
+- the screen is a two-column grid from `lg` — the anvil takes the room, and stock, recipe and
+  the player's recent work sit in a narrow rail beside it. Below `lg` the rail moves under the
+  anvil, which puts the gauge in the upper half of a phone and the controls beneath it;
+- the workpiece is one element carrying both feel and precision: a billet whose colour and
+  glow follow the temperature, over a hairline rail that marks the band boundaries and lights
+  the ideal window in ember — the same device the navigation uses for the current destination;
+- heat is a press-and-hold control, not a click counter, on pointer and on keyboard. Strike is
+  a single button. Both are ordinary HTML controls at 4rem tall, 5rem from `lg`;
+- the gauge is a `meter` with `aria-valuetext` naming the band, so the temperature is
+  available to a screen reader and to a test without a number cluttering the screen;
+- craftsmanship is the headline of the finished state, because it is the only thing about the
+  sword the player changed.
 
 ## Things not to decide prematurely
 

@@ -1,14 +1,16 @@
+import { Link } from "react-router";
 import { useSession } from "@/auth/useSession";
+import { INLINE_LINK_CLASSES } from "@/components/auth/FormControls";
+import { FORGE_PATH } from "@/shell/destinations";
 import { Fact, FactList, ShellScreen } from "@/shell/ShellScreen";
 
 /**
- * Where a signed-in player lands, and the first screen the shell was built to hold.
+ * Where a signed-in player lands.
  *
- * It is short because the game is not written yet. The alternative — resource counters, an
- * army summary, an activity feed — would all be invented, and a screen that lies about what
- * exists is worse than a screen that says plainly what does. What it does prove is real: the
- * session reached the client, the shell is around it, and there is a coherent place for the
- * forge, the units and the battlefield to attach.
+ * Still short. The forge is real now and is named as such; units and the battlefield are
+ * not, and are described as absent rather than dressed up with resource counters, an army
+ * summary or an activity feed. A screen that lies about what exists is worse than a screen
+ * that says plainly what does.
  */
 export function WorldScreen() {
   const { data } = useSession();
@@ -17,8 +19,12 @@ export function WorldScreen() {
     <ShellScreen title="World" lead="You are signed in. The game attaches here as each system is built.">
       <div className="flex max-w-[44rem] flex-col gap-10">
         <p className="font-body text-body leading-relaxed text-bone-dim">
-          The forge, your units and the battlefield are not available yet. Each one appears in the
-          navigation when it is ready to be used.
+          The{" "}
+          <Link to={FORGE_PATH} className={INLINE_LINK_CLASSES}>
+            forge
+          </Link>{" "}
+          is open, and what you make there is kept. Your units and the battlefield are not built
+          yet; each one appears in the navigation when it is ready to be used.
         </p>
 
         <FactList>

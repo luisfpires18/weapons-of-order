@@ -76,10 +76,20 @@ public sealed class AuthTestClient(HttpClient http) : IDisposable
         var confirmed = await PostAsync("/api/auth/confirm-email", new { userId, token }, cancellationToken);
         Assert.Equal(System.Net.HttpStatusCode.NoContent, confirmed.StatusCode);
 
-        var login = await PostAsync("/api/auth/login", new { email, password }, cancellationToken);
-        Assert.Equal(System.Net.HttpStatusCode.NoContent, login.StatusCode);
+        await SignInAsync(email, password, cancellationToken);
 
         return email;
+    }
+
+    /// <summary>
+    /// Signs in an account that already exists, for tests that need a second browser holding
+    /// the same account — which is how a reload or a new device is proven to see the same
+    /// server-side state.
+    /// </summary>
+    public async Task SignInAsync(string email, string password, CancellationToken cancellationToken)
+    {
+        var login = await PostAsync("/api/auth/login", new { email, password }, cancellationToken);
+        Assert.Equal(System.Net.HttpStatusCode.NoContent, login.StatusCode);
     }
 
     public void Dispose() => Http.Dispose();

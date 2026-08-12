@@ -51,6 +51,7 @@ describe("authenticated shell", () => {
 
     expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual([
       "World",
+      "Forge",
       "Account",
     ]);
   });
@@ -84,7 +85,6 @@ describe("shell access control", () => {
   it.each([
     "/hub",
     "/barracks",
-    "/forge",
     "/arrange",
     "/dungeon",
     "/vault",

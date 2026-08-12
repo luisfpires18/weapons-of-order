@@ -203,7 +203,7 @@ Focused backend/frontend tests plus Playwright/browser flow for:
 
 ## Task 3 - Authenticated game shell + menus
 
-**Status: THIS BRANCH / AWAITING CREATOR REVIEW**
+**Status: MERGED**
 
 ### Goal
 
@@ -262,6 +262,8 @@ Browser sweep at minimum:
 ---
 
 ## Task 4 - Forge vertical slice + minimal inventory seam
+
+**Status: THIS BRANCH / AWAITING CREATOR REVIEW**
 
 ### Goal
 
