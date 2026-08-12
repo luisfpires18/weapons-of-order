@@ -44,8 +44,11 @@ export type FetchMock = ReturnType<typeof vi.fn<typeof fetch>>;
 /**
  * Answers a request, or declines it by returning `undefined` so the default handling below
  * takes over. This is how a test brings its own API for the screen it is exercising.
+ *
+ * A promise is a valid answer, which is what lets a test hold one request open and assert on
+ * what the client does — or refuses to do — while it is outstanding.
  */
-export type ApiStub = (url: string, init?: RequestInit) => Response | undefined;
+export type ApiStub = (url: string, init?: RequestInit) => Response | Promise<Response> | undefined;
 
 export function renderApp(
   session: Session,

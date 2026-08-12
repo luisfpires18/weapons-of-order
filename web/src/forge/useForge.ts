@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { UseMutationResult } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiProblem } from "@/api/problem";
 import { useAntiforgeryTokens } from "@/auth/useSession";
 import type { ForgeState } from "@/forge/api";
@@ -39,20 +38,87 @@ export function useForgedItems() {
   });
 }
 
-type ForgeAction<TBody> = UseMutationResult<ForgeState, Error, TBody>;
+/**
+ * An action the player can take at the anvil.
+ *
+ * `run` returns nothing on purpose. Its result is the new forge state, which arrives through
+ * the query cache; what a caller needs to know locally is only whether the action is still
+ * outstanding and whether it failed.
+ */
+export type ForgeAction<TBody> = {
+  run: (body: TBody) => void;
+  isPending: boolean;
+  error: Error | null;
+};
+
+export type ForgeActions = {
+  begin: ForgeAction<{ recipeKey: string }>;
+  strike: ForgeAction<void>;
+  abandon: ForgeAction<void>;
+  heat: { setHeating: (heating: boolean) => void; isPending: boolean; error: Error | null };
+};
 
 /**
- * One forge action. The response is the new state, so it is written straight into the cache
- * rather than triggering a refetch: an extra round trip between striking and seeing the blow
- * land is the difference between a hammer and a form submission.
+ * Every action at the anvil, sharing one queue.
+ *
+ * They are created together because they have to be ordered together. The server decides
+ * what a blow was worth from the state it holds at the moment the request lands, so whether
+ * the workpiece was still in the fire when the hammer fell is decided by which request
+ * arrives first. Letting the browser issue a strike while the release that preceded it is
+ * still in flight would make craftsmanship depend on network scheduling rather than on what
+ * the player did.
  */
-function useForgeAction<TBody>(url: string): ForgeAction<TBody> {
+export function useForgeActions(active: boolean): ForgeActions {
+  const enqueue = useForgeQueue();
+
+  return {
+    begin: useForgeAction<{ recipeKey: string }>(FORGE_URLS.begin, enqueue),
+    strike: useForgeAction<void>(FORGE_URLS.strike, enqueue),
+    abandon: useForgeAction<void>(FORGE_URLS.abandon, enqueue),
+    heat: useHeatControl(active, enqueue),
+  };
+}
+
+type Enqueue = <T>(run: () => Promise<T>) => Promise<T>;
+
+/**
+ * Runs what it is given one at a time, in the order it was asked.
+ *
+ * A promise chain rather than a scheduler: the whole mechanism is the tail below. A caller
+ * claims its place in line **synchronously**, at the moment the player pressed something,
+ * and its request is issued when the one in front of it has answered. That is the part that
+ * matters — claiming the place later, once a request had actually started, would put a
+ * release that is waiting behind an earlier request after a strike the player took second.
+ *
+ * A failed action does not take the queue down with it: the tail is only ever a settled
+ * promise, so the next action runs whatever happened to the last one.
+ */
+function useForgeQueue(): Enqueue {
+  const tail = useRef<Promise<unknown>>(Promise.resolve());
+
+  return useCallback(<T,>(run: () => Promise<T>): Promise<T> => {
+    const next = tail.current.then(run, run);
+
+    tail.current = next.then(ignore, ignore);
+
+    return next;
+  }, []);
+}
+
+/**
+ * One forge action, queued behind the others.
+ *
+ * The response is the new state, so it is written straight into the cache rather than
+ * triggering a refetch: an extra round trip between striking and seeing the blow land is the
+ * difference between a hammer and a form submission.
+ */
+function useForgeAction<TBody>(url: string, enqueue: Enqueue): ForgeAction<TBody> {
   const queryClient = useQueryClient();
   const tokens = useAntiforgeryTokens();
 
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: (body: TBody) => postForgeAction(url, body ?? {}, tokens),
-    onSuccess: (state) => {
+    onSuccess: (state: ForgeState) => {
       queryClient.setQueryData(forgeStateKey, state);
 
       // A finished sword is a new owned item, and the list beside the anvil should not be
@@ -61,56 +127,57 @@ function useForgeAction<TBody>(url: string): ForgeAction<TBody> {
         void queryClient.invalidateQueries({ queryKey: forgedItemsKey });
       }
     },
-    onError: (error) => {
-      // These three all mean the same thing: this screen was acting on a forge that has
-      // since moved. Re-reading is the correct answer, and a better one than an error the
-      // player has no way to act on.
+    onError: (error: Error) => {
+      // These all mean the same thing: this screen was acting on a forge that has since
+      // moved. Re-reading is the correct answer, and a better one than an error the player
+      // has no way to act on.
       if (error instanceof ApiProblem && STALE_VIEW_CODES.has(error.code)) {
         void queryClient.invalidateQueries({ queryKey: forgeStateKey });
       }
     },
   });
-}
 
-export function useBeginForge(): ForgeAction<{ recipeKey: string }> {
-  return useForgeAction(FORGE_URLS.begin);
-}
+  // Held in a ref so `run` below can be stable: it is what the queue and the window
+  // listeners are keyed on, and an identity that changed on re-render would tear those down
+  // mid-press.
+  const send = useRef(mutation.mutateAsync);
 
-export function useStrike(): ForgeAction<void> {
-  return useForgeAction(FORGE_URLS.strike);
-}
+  useEffect(() => {
+    send.current = mutation.mutateAsync;
+  }, [mutation.mutateAsync]);
 
-export function useAbandonForge(): ForgeAction<void> {
-  return useForgeAction(FORGE_URLS.abandon);
+  // Counted from the moment the player acted rather than from the moment the request
+  // started, so a control stays disabled while its action is still waiting its turn.
+  const [outstanding, setOutstanding] = useState(0);
+
+  const run = useCallback(
+    (body: TBody) => {
+      setOutstanding((count) => count + 1);
+
+      // The place in the queue is claimed here, inside the event handler.
+      void enqueue(() => send.current(body))
+        .catch(ignore)
+        .finally(() => setOutstanding((count) => count - 1));
+    },
+    [enqueue],
+  );
+
+  return { run, isPending: outstanding > 0, error: mutation.error };
 }
 
 /**
  * Holding the workpiece in the fire.
  *
  * The player's hand is continuous and the API is not, so this keeps one bit of intent and
- * makes sure the server ends up agreeing with it. Requests are never issued in parallel: a
- * press and the release that follows it must not be able to land out of order, or the forge
- * would be left heating after the player let go.
+ * sends it when it changes. Each press and each release claims its place in the shared queue
+ * as it happens, which is what keeps a release ahead of the strike that followed it.
  */
-export function useHeatControl(active: boolean): {
-  setHeating: (heating: boolean) => void;
-  isPending: boolean;
-  error: Error | null;
-} {
-  const action = useForgeAction<{ heating: boolean }>(FORGE_URLS.heat);
-  const desired = useRef<boolean | null>(null);
-  const sent = useRef<boolean | null>(null);
-  const sending = useRef(false);
+function useHeatControl(active: boolean, enqueue: Enqueue): ForgeActions["heat"] {
+  const action = useForgeAction<{ heating: boolean }>(FORGE_URLS.heat, enqueue);
+  const { run } = action;
+
+  const intent = useRef<boolean | null>(null);
   const anvilHasWork = useRef(active);
-
-  // Held in a ref so `setHeating` below can be stable for the life of the screen. It has a
-  // window listener hanging off it whose teardown releases the fire, and an identity that
-  // changed on re-render would make that teardown run mid-press.
-  const send = useRef(action.mutateAsync);
-
-  useEffect(() => {
-    send.current = action.mutateAsync;
-  }, [action.mutateAsync]);
 
   useEffect(() => {
     anvilHasWork.current = active;
@@ -118,44 +185,20 @@ export function useHeatControl(active: boolean): {
     // Nothing on the anvil means nothing is known about the fire either, so the next press
     // always says so out loud rather than being skipped as a repeat.
     if (!active) {
-      desired.current = null;
-      sent.current = null;
+      intent.current = null;
     }
   }, [active]);
 
-  const drain = useCallback(async () => {
-    if (sending.current) return;
-    sending.current = true;
-
-    try {
-      while (desired.current !== null && desired.current !== sent.current) {
-        const heating = desired.current;
-        desired.current = null;
-
-        try {
-          await send.current({ heating });
-          sent.current = heating;
-        } catch {
-          // Reported through the mutation's own error state. The loop continues so a failed
-          // press cannot strand the release that was queued behind it.
-          sent.current = null;
-        }
-      }
-
-      desired.current = null;
-    } finally {
-      sending.current = false;
-    }
-  }, []);
-
   const setHeating = useCallback(
     (heating: boolean) => {
-      if (!anvilHasWork.current) return;
+      if (!anvilHasWork.current || intent.current === heating) {
+        return;
+      }
 
-      desired.current = heating;
-      void drain();
+      intent.current = heating;
+      run({ heating });
     },
-    [drain],
+    [run],
   );
 
   // Walking away with the iron still in the fire would leave it heating, because the fire is
@@ -175,3 +218,5 @@ export function useHeatControl(active: boolean): {
 
   return { setHeating, isPending: action.isPending, error: action.error };
 }
+
+function ignore() {}

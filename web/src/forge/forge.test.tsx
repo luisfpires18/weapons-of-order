@@ -2,6 +2,7 @@
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import type { ApiStub } from "@/testing/renderApp";
 import { renderApp, SIGNED_IN, SIGNED_OUT } from "@/testing/renderApp";
 import { fakeForge, forgeSession, idleForge, SWORD } from "@/testing/forge";
 
@@ -264,6 +265,145 @@ describe("coming back to the forge", () => {
 
     expect(await screen.findByRole("button", { name: "Start a sword" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Strike" })).toBeNull();
+  });
+});
+
+/**
+ * The server decides what a blow was worth from the state it holds when the request lands,
+ * so the order the requests arrive in is the order the player's actions happened in. A
+ * strike that overtook the release before it would be struck into a fire the player had
+ * already let go of, and craftsmanship would depend on network scheduling.
+ */
+describe("the order actions reach the server", () => {
+  /**
+   * A forge that records what was asked, in the order it was asked, and can hold a chosen
+   * request open. Because `fakeForge` is only reached when a held request is released, its
+   * own call log is the order the server *processed* things, while `issued` is the order the
+   * client *sent* them.
+   */
+  function orderedForge(hold: (label: string) => boolean) {
+    const server = fakeForge();
+    const issued: string[] = [];
+    const held: (() => void)[] = [];
+
+    const answer = (url: string, init?: RequestInit): Response => {
+      const response = server.handle(url, init);
+      if (!response) throw new Error(`the fake forge did not answer ${url}`);
+      return response;
+    };
+
+    const api: ApiStub = (url, init) => {
+      if (!url.startsWith("/api/forge")) return undefined;
+      if (init?.method !== "POST") return answer(url, init);
+
+      issued.push(labelFor(url, init.body));
+
+      if (!hold(labelFor(url, init.body))) return answer(url, init);
+
+      return new Promise<Response>((resolve) => {
+        held.push(() => resolve(answer(url, init)));
+      });
+    };
+
+    return {
+      api,
+      issued,
+      /** What the server actually got to act on, in order. */
+      processed: () => server.calls.map((call) => labelFor(call.url, JSON.stringify(call.body))),
+      release: () => held.splice(0).forEach((resolve) => resolve()),
+      server,
+    };
+  }
+
+  function labelFor(url: string, body: BodyInit | null | undefined): string {
+    const route = url.split("/").pop() ?? url;
+
+    if (route !== "heat") return route;
+
+    const parsed = typeof body === "string" ? (JSON.parse(body) as { heating?: boolean }) : {};
+    return `heat:${String(parsed.heating)}`;
+  }
+
+  /** Renders straight onto a workpiece the player already started, to keep the log short. */
+  function atTheAnvil(hold: (label: string) => boolean) {
+    const forge = orderedForge(hold);
+    forge.server.handle("/api/forge/begin", { method: "POST", body: "{}" });
+
+    freezeFrames();
+    renderApp(SIGNED_IN, { at: "/forge", api: forge.api });
+
+    return forge;
+  }
+
+  it("holds a strike behind the release that came before it", async () => {
+    const forge = atTheAnvil((label) => label === "heat:false");
+    const user = userEvent.setup();
+
+    const heat = await screen.findByRole("button", { name: "Hold to heat" });
+
+    await user.pointer({ keys: "[MouseLeft>]", target: heat });
+    await waitFor(() => expect(forge.issued).toContain("heat:true"));
+
+    // The release goes out and is left unanswered, as a slow network would leave it.
+    await user.pointer({ keys: "[/MouseLeft]", target: heat });
+    await waitFor(() => expect(forge.issued).toContain("heat:false"));
+
+    await user.click(screen.getByRole("button", { name: "Strike" }));
+
+    // The blow has been asked for and has not been sent: it is waiting on the release.
+    expect(forge.issued).toEqual(["heat:true", "heat:false"]);
+    expect(forge.processed()).toEqual(["begin", "heat:true"]);
+
+    forge.release();
+
+    await waitFor(() => expect(forge.issued).toContain("strike"));
+    expect(forge.processed()).toEqual(["begin", "heat:true", "heat:false", "strike"]);
+  });
+
+  it("holds everything behind a press that has not been answered yet", async () => {
+    const forge = atTheAnvil((label) => label === "heat:true");
+    const user = userEvent.setup();
+
+    const heat = await screen.findByRole("button", { name: "Hold to heat" });
+
+    // The press is the request left outstanding this time, and the release and the blow both
+    // queue up behind it.
+    await user.pointer({ keys: "[MouseLeft>]", target: heat });
+    await waitFor(() => expect(forge.issued).toContain("heat:true"));
+
+    await user.pointer({ keys: "[/MouseLeft]", target: heat });
+    await user.click(screen.getByRole("button", { name: "Strike" }));
+
+    expect(forge.issued).toEqual(["heat:true"]);
+    expect(forge.processed()).toEqual(["begin"]);
+
+    forge.release();
+
+    await waitFor(() => expect(forge.issued).toContain("strike"));
+    expect(forge.processed()).toEqual(["begin", "heat:true", "heat:false", "strike"]);
+  });
+
+  it("keeps a queued blow from being asked for twice", async () => {
+    const forge = atTheAnvil((label) => label === "heat:false");
+    const user = userEvent.setup();
+
+    const heat = await screen.findByRole("button", { name: "Hold to heat" });
+    await user.pointer({ keys: "[MouseLeft>]", target: heat });
+    await user.pointer({ keys: "[/MouseLeft]", target: heat });
+    await waitFor(() => expect(forge.issued).toContain("heat:false"));
+
+    const strike = screen.getByRole("button", { name: "Strike" });
+    await user.click(strike);
+
+    // Waiting its turn counts as pending, so the control is out of reach rather than
+    // stacking a second blow the server would only reject.
+    await waitFor(() => expect(strike.hasAttribute("disabled")).toBe(true));
+    await user.click(strike);
+
+    forge.release();
+
+    await waitFor(() => expect(forge.issued).toContain("strike"));
+    expect(forge.issued.filter((label) => label === "strike")).toHaveLength(1);
   });
 });
 

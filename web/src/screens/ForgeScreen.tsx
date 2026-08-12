@@ -6,14 +6,7 @@ import { Anvil, BlowRow } from "@/forge/Anvil";
 import { CRAFTSMANSHIP_LABELS, CRAFTSMANSHIP_TEXT } from "@/forge/craftsmanship";
 import { AnvilAction, HoldToHeat, QuietAction, Strike } from "@/forge/ForgeActions";
 import { MaterialStock, RecentWork, RecipeCost } from "@/forge/ForgeRail";
-import {
-  STRIKE_COOLDOWN_CODE,
-  useAbandonForge,
-  useBeginForge,
-  useForgeState,
-  useHeatControl,
-  useStrike,
-} from "@/forge/useForge";
+import { STRIKE_COOLDOWN_CODE, useForgeActions, useForgeState } from "@/forge/useForge";
 import { ShellScreen } from "@/shell/ShellScreen";
 
 /**
@@ -35,15 +28,15 @@ export function ForgeScreen() {
   const session = data?.session ?? null;
   const active = session?.status === "active";
 
-  const begin = useBeginForge();
-  const strike = useStrike();
-  const abandon = useAbandonForge();
-  const heat = useHeatControl(active);
+  // One set of actions, sharing one queue, so they reach the server in the order they were
+  // taken. See `useForgeActions`.
+  const { begin, strike, abandon, heat } = useForgeActions(active);
+  const { setHeating } = heat;
 
   // The burn rule runs on stored state, so the server has no reason to write a ruin down
   // until it is asked. Letting go of the fire is the smallest true thing to say at the
   // moment the iron burns through, and the answer to it carries the ruin.
-  const reportBurnedThrough = useCallback(() => heat.setHeating(false), [heat]);
+  const reportBurnedThrough = useCallback(() => setHeating(false), [setHeating]);
 
   if (isPending) {
     return (
@@ -96,10 +89,10 @@ export function ForgeScreen() {
           {active ? (
             <div className="flex flex-col gap-6">
               <div className="flex gap-4">
-                <HoldToHeat heating={session.heating} disabled={false} onChange={heat.setHeating} />
-                <Strike disabled={strike.isPending} onStrike={() => strike.mutate()} />
+                <HoldToHeat heating={session.heating} disabled={false} onChange={setHeating} />
+                <Strike disabled={strike.isPending} onStrike={() => strike.run()} />
               </div>
-              <QuietAction onClick={() => abandon.mutate()}>Set the workpiece aside</QuietAction>
+              <QuietAction onClick={() => abandon.run()}>Set the workpiece aside</QuietAction>
             </div>
           ) : recipe ? (
             <div className="flex flex-col gap-4">
@@ -107,7 +100,7 @@ export function ForgeScreen() {
                 pending={begin.isPending}
                 pendingLabel="Starting"
                 disabled={!recipe.affordable}
-                onClick={() => begin.mutate({ recipeKey: recipe.key })}
+                onClick={() => begin.run({ recipeKey: recipe.key })}
               >
                 {session?.status === "completed" || session?.status === "ruined"
                   ? `Start another ${recipe.name.toLowerCase()}`
