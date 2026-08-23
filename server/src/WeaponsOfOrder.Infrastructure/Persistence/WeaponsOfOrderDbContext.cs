@@ -17,6 +17,12 @@ namespace WeaponsOfOrder.Infrastructure.Persistence;
 /// Task 4 adds the first gameplay tables, for the ordinary forge. Later systems bring their
 /// own; nothing is added here ahead of the task that owns it.
 /// </para>
+/// <para>
+/// Task 5 adds the preparation tables: the Units a player owns and the weapons they hold.
+/// Unit definitions themselves are not here — they are creator-authored content in
+/// <c>server/content/units.json</c>, and a player-owned Unit stores only the key of the
+/// definition it is an instance of.
+/// </para>
 /// </remarks>
 public sealed class WeaponsOfOrderDbContext(DbContextOptions<WeaponsOfOrderDbContext> options)
     : IdentityUserContext<WeaponsOfOrderUser, Guid>(options)
@@ -28,6 +34,10 @@ public sealed class WeaponsOfOrderDbContext(DbContextOptions<WeaponsOfOrderDbCon
     public DbSet<ForgeStrike> ForgeStrikes => Set<ForgeStrike>();
 
     public DbSet<ForgedItem> ForgedItems => Set<ForgedItem>();
+
+    public DbSet<PlayerUnit> PlayerUnits => Set<PlayerUnit>();
+
+    public DbSet<EquippedWeapon> EquippedWeapons => Set<EquippedWeapon>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

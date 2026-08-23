@@ -52,6 +52,8 @@ describe("authenticated shell", () => {
     expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual([
       "World",
       "Forge",
+      "Inventory",
+      "Units",
       "Account",
     ]);
   });

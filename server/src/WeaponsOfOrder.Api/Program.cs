@@ -1,16 +1,24 @@
 using WeaponsOfOrder.Api.Auth;
 using WeaponsOfOrder.Api.Auth.Notifications;
+using WeaponsOfOrder.Api.Content;
 using WeaponsOfOrder.Api.Forge;
 using WeaponsOfOrder.Api.Health;
+using WeaponsOfOrder.Api.Preparation;
 using WeaponsOfOrder.Infrastructure;
 using WeaponsOfOrder.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Creator-authored game content from server/content, watched for changes. Kept out of
+// appsettings.json because it is the creator's to edit, not the application's to configure.
+builder.Configuration.AddWeaponsOfOrderContent(builder.Environment);
+
 builder.Services.AddProblemDetails();
 builder.Services.AddWeaponsOfOrderPersistence(builder.Configuration);
 builder.Services.AddWeaponsOfOrderAuth(builder.Configuration, builder.Environment);
+builder.Services.AddWeaponsOfOrderGameContent(builder.Configuration);
 builder.Services.AddWeaponsOfOrderForge(builder.Configuration);
+builder.Services.AddWeaponsOfOrderPreparation();
 
 builder.Services
     .AddHealthChecks()
@@ -38,6 +46,7 @@ app.UseAntiforgery();
 app.MapWeaponsOfOrderHealthChecks();
 app.MapWeaponsOfOrderAuth();
 app.MapWeaponsOfOrderForge();
+app.MapWeaponsOfOrderPreparation();
 
 if (app.Environment.IsDevelopment())
 {

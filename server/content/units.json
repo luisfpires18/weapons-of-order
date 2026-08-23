@@ -1,0 +1,53 @@
+{
+  "//UnitContent": [
+    "Creator-editable Unit definitions. Edit this file and restart the API; no C# change,",
+    "no React change and no EF migration is involved.",
+    "",
+    "'Key' is the stable identity. Player-owned Unit rows store it and nothing else about the",
+    "definition, so every other field below is free to change at any time. Do not rename a key",
+    "that persistent rows already reference.",
+    "",
+    "TEMPORARY PROTOTYPE VALUES, NOT CANON: 'Tier' 1 and 'MaxArmor' Heavy on all three entries",
+    "are placeholders because the creator has explicitly deferred authoring those details.",
+    "'Heavy' is deliberately permissive. 'Mounted' is the one field here with structural",
+    "meaning, and 'Melee'/'Ranged'/'Mounted' are identity labels only: canon allows any Unit to",
+    "equip any compatible weapon, and nothing in the application reads a display name.",
+    "",
+    "See content/README.md."
+  ],
+  "UnitContent": {
+    "Kingdoms": ["Arkazia"],
+    "Units": [
+      {
+        "Key": "arkazia.melee",
+        "DisplayName": "Melee",
+        "Type": "Regular",
+        "Kingdom": "Arkazia",
+        "Tier": 1,
+        "MaxArmor": "Heavy",
+        "Mounted": false,
+        "Starter": true
+      },
+      {
+        "Key": "arkazia.ranged",
+        "DisplayName": "Ranged",
+        "Type": "Regular",
+        "Kingdom": "Arkazia",
+        "Tier": 1,
+        "MaxArmor": "Heavy",
+        "Mounted": false,
+        "Starter": true
+      },
+      {
+        "Key": "arkazia.mounted",
+        "DisplayName": "Mounted",
+        "Type": "Regular",
+        "Kingdom": "Arkazia",
+        "Tier": 1,
+        "MaxArmor": "Heavy",
+        "Mounted": true,
+        "Starter": true
+      }
+    ]
+  }
+}
