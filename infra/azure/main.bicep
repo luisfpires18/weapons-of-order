@@ -136,6 +136,26 @@ param emailDataLocation string = 'Europe'
 param gitHubRepository string = 'luisfpires18/weapons-of-order'
 
 @description('''
+The repository owner's numeric id, as `gh api users/luisfpires18 --jq .id` prints it.
+
+Not a secret; GitHub publishes it. It is here because GitHub's OIDC subject for this
+repository is the immutable form, which carries the numeric ids as well as the names:
+`repo:<owner>@<ownerId>/<name>@<repositoryId>:environment:<environment>`. A credential
+configured without them does not match the presented assertion and Entra refuses the
+exchange.
+''')
+@minLength(1)
+param gitHubRepositoryOwnerId string = '29492601'
+
+@description('''
+The repository's own numeric id, as `gh api repos/luisfpires18/weapons-of-order --jq .id`
+prints it. Non-secret and immutable in the same way, and the other half of the pair the
+immutable subject is built from.
+''')
+@minLength(1)
+param gitHubRepositoryId string = '1329180174'
+
+@description('''
 The GitHub Environment the deployment job declares. The federated credential is bound to it,
 so a workflow that does not run in this environment cannot obtain a token.
 ''')
@@ -200,6 +220,8 @@ module deployment 'modules/deployment-identity.bicep' = {
     location: location
     identityName: 'id-${affix}-deploy'
     gitHubRepository: gitHubRepository
+    gitHubRepositoryOwnerId: gitHubRepositoryOwnerId
+    gitHubRepositoryId: gitHubRepositoryId
     gitHubEnvironment: gitHubEnvironment
     siteName: app.outputs.name
   }
@@ -225,3 +247,11 @@ output tenantId string = subscription().tenantId
 
 @description('Non-secret. Goes into the GitHub Environment as AZURE_SUBSCRIPTION_ID.')
 output subscriptionId string = subscription().subscriptionId
+
+@description('''
+Non-secret. Not a GitHub setting — the subject the federated credential was configured with,
+printed so it can be compared against the `sub` claim of a real workflow token. They must be
+identical; when they are not, Entra answers AADSTS700213 and the deployment job fails at
+sign-in.
+''')
+output deploymentFederatedSubject string = deployment.outputs.federatedSubject
