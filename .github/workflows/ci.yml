@@ -58,32 +58,6 @@ jobs:
     name: Server
     runs-on: ubuntu-latest
 
-    # This database exists for the length of one job, on the runner's own network, and is
-    # destroyed with it. It therefore has no password at all rather than a committed
-    # placeholder one: a fake credential in a connection string is indistinguishable from a
-    # real leaked one to a secret scanner, and there is nothing here worth protecting.
-    #
-    # Never copy this to an environment that outlives a job. Local development still uses a
-    # password (docker-compose.yml), and deployed environments supply real credentials
-    # through environment configuration.
-    env:
-      WOO_CI_POSTGRES: Host=localhost;Port=5432;Username=woo_dev
-
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_DB: weapons_of_order
-          POSTGRES_USER: woo_dev
-          POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U woo_dev -d weapons_of_order"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
     steps:
       - uses: actions/checkout@v7
 
@@ -101,28 +75,29 @@ jobs:
       - name: Build
         run: dotnet build server/WeaponsOfOrder.slnx --configuration Release --no-restore
 
-      # The account tests run against real PostgreSQL: Identity's normalization, unique
-      # indexes and concurrency stamps are not exercised by a substitute store. The suite
-      # migrates its own database on first use, so no extra setup step is needed here.
+      # The account and gameplay tests run against a real SQLite file, not a substitute
+      # store: Identity's normalization, the unique and partial indexes the forge and the
+      # army depend on, and the check constraints are all things only the provider enforces.
+      # There is nothing to install and no service container to wait for — the suite creates
+      # its own database under the runner's temporary directory and migrates it.
       - name: Test
-        env:
-          WOO_TEST_CONNECTION_STRING: ${{ env.WOO_CI_POSTGRES }};Database=weapons_of_order_tests
         run: dotnet test server/WeaponsOfOrder.slnx --configuration Release --no-build
 
       - name: Restore dotnet tools
         run: dotnet tool restore
 
-      # Proves the migration pipeline reaches a real PostgreSQL instance and applies
-      # cleanly from an empty database.
+      # Proves the migration history applies from nothing, which is what a fresh staging
+      # instance does on its first start.
       - name: Apply migrations to a clean database
         env:
-          ConnectionStrings__WeaponsOfOrder: ${{ env.WOO_CI_POSTGRES }};Database=weapons_of_order
-        run: >-
-          dotnet ef database update
-          --project server/src/WeaponsOfOrder.Infrastructure
-          --startup-project server/src/WeaponsOfOrder.Api
-          --configuration Release
-          --no-build
+          ConnectionStrings__WeaponsOfOrder: Data Source=${{ runner.temp }}/migration-check/weapons-of-order.db
+        run: |
+          mkdir -p "${{ runner.temp }}/migration-check"
+          dotnet ef database update \
+            --project server/src/WeaponsOfOrder.Infrastructure \
+            --startup-project server/src/WeaponsOfOrder.Api \
+            --configuration Release \
+            --no-build
 
   infra:
     name: Infra
@@ -130,21 +105,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Neither of these needs an Azure subscription, a sign-in or a network, and neither
-      # creates anything. They exist because both provisioning bugs found so far were
-      # invisible to every check that existed: a runtime listing compared by whole line when
-      # the CLI started adding columns, and a firewall rule handed the server's flag. Both
-      # parse fine. Both only appeared partway through a real provisioning run.
+      # Needs no Azure subscription, no sign-in and no network, and creates nothing. It
+      # exists because a provisioning bug found this way was invisible to every check that
+      # existed: a runtime listing compared by whole line, once the CLI started adding
+      # columns. It parses fine. It only appeared partway through a real provisioning run.
       - name: Azure CLI output parsing
         run: infra/azure/lib/az-output.test.sh
-
-      - name: Azure CLI command syntax
-        run: infra/azure/lib/az-cli-syntax.test.sh
-
-      # Also scans every Azure PostgreSQL connection string in the repository, so a
-      # connection cannot quietly stop verifying the server it is talking to.
-      - name: PostgreSQL TLS
-        run: infra/azure/lib/psql-tls.test.sh
 
       - name: Shell syntax
         run: |
@@ -157,10 +123,7 @@ jobs:
         run: |
           az bicep install --only-show-errors
           az bicep build --file infra/azure/main.bicep --stdout > /dev/null
-          # The two values are irrelevant and are generated rather than written down, so
-          # nothing here reads as a credential to a scanner or to a person.
-          export WOO_PG_ADMIN_PASSWORD="$(uuidgen)"
-          export WOO_PG_APP_PASSWORD="$(uuidgen)"
+          # No parameter is secure any more, so nothing has to be supplied to read this.
           az bicep build-params --file infra/azure/main.bicepparam --stdout > /dev/null
 
   package:
@@ -222,8 +185,9 @@ jobs:
       name: staging
       url: ${{ steps.target.outputs.base_url }}
 
-    # Never cancelled and never overlapping: a second deployment must not start while the
-    # first is midway through applying migrations.
+    # Never cancelled and never overlapping. The application migrates its own SQLite file
+    # while it starts, so a second deployment arriving mid-restart would replace the binaries
+    # underneath a migration that is still running.
     concurrency:
       group: weapons-of-order-staging
       cancel-in-progress: false
@@ -235,20 +199,9 @@ jobs:
     env:
       AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
       AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
-      AZURE_POSTGRES_SERVER: ${{ vars.AZURE_POSTGRES_SERVER }}
-      POSTGRES_DATABASE: ${{ vars.POSTGRES_DATABASE }}
-      POSTGRES_ADMIN_LOGIN: ${{ vars.POSTGRES_ADMIN_LOGIN }}
-      POSTGRES_RUNTIME_LOGIN: ${{ vars.POSTGRES_RUNTIME_LOGIN }}
-      # The one firewall rule this run owns. Named after the run so a rule left behind by a
-      # cancelled job is identifiable, and so two runs could never fight over one name.
-      FIREWALL_RULE: gh-deploy-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - uses: actions/checkout@v7
-
-      - uses: actions/setup-dotnet@v6
-        with:
-          global-json-file: global.json
 
       - uses: actions/download-artifact@v6
         with:
@@ -268,7 +221,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       # OIDC. GitHub mints a short-lived token for this run and Entra exchanges it; there is
-      # no Azure client secret in this repository.
+      # no Azure client secret in this repository, and no database credential either.
       - uses: azure/login@v2
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
@@ -284,68 +237,6 @@ jobs:
             --query defaultHostName --output tsv)"
           echo "base_url=https://$host" >> "$GITHUB_OUTPUT"
 
-      # The database is not open to the internet. This runner's address is not known until
-      # now, so the rule is opened for this run and removed again below, even if the
-      # migration fails. The trade is deliberate: a few minutes of one address reaching the
-      # server, against either a self-hosted runner or leaving the server permanently open.
-      - name: Open the database to this runner
-        id: firewall
-        run: |
-          runner_ip="$(curl --fail --silent --show-error --max-time 15 https://api.ipify.org)"
-          echo "Opening $AZURE_POSTGRES_SERVER to ${runner_ip} as ${FIREWALL_RULE}"
-          az postgres flexible-server firewall-rule create \
-            --resource-group "$AZURE_RESOURCE_GROUP" \
-            --server-name "$AZURE_POSTGRES_SERVER" \
-            --name "$FIREWALL_RULE" \
-            --start-ip-address "$runner_ip" \
-            --end-ip-address "$runner_ip" \
-            --output none
-
-      - name: Restore dotnet tools
-        run: dotnet tool restore
-
-      # Explicit, never on application startup. The exit code is what makes the rest of this
-      # job conditional: a failed migration stops here and staging keeps running the schema
-      # and the code it already had.
-      - name: Migrate the staging database
-        env:
-          ConnectionStrings__WeaponsOfOrder: >-
-            Host=${{ vars.AZURE_POSTGRES_SERVER }}.postgres.database.azure.com;Port=5432;Database=${{ vars.POSTGRES_DATABASE }};Username=${{ vars.POSTGRES_ADMIN_LOGIN }};Password=${{ secrets.POSTGRES_ADMIN_PASSWORD }};SSL Mode=VerifyFull
-        run: >-
-          dotnet ef database update
-          --project server/src/WeaponsOfOrder.Infrastructure
-          --startup-project server/src/WeaponsOfOrder.Api
-          --configuration Release
-
-      # Idempotent. ALTER DEFAULT PRIVILEGES already covers a table a migration just added,
-      # so this is the belt to that pair of braces: it costs a second and removes the class
-      # of failure where staging boots and then cannot read its own new table.
-      - name: Grant the runtime role what the new schema holds
-        env:
-          PGPASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
-        run: |
-          # `sslmode=verify-full` does not say what to verify against, and libpq's default
-          # is a per-user file no runner has. This names the platform CA store instead.
-          . infra/azure/lib/psql-tls.sh
-          sslrootcert="$(azure_postgres_sslrootcert)"
-          conninfo="$(azure_postgres_conninfo "${AZURE_POSTGRES_SERVER}.postgres.database.azure.com" "$POSTGRES_DATABASE" "$POSTGRES_ADMIN_LOGIN" "$sslrootcert")"
-          psql "$conninfo" \
-            --set=ON_ERROR_STOP=1 \
-            --set=runtime_role="$POSTGRES_RUNTIME_LOGIN" \
-            --set=admin_role="$POSTGRES_ADMIN_LOGIN" \
-            --file infra/azure/database/grant-runtime-role.sql
-
-      # always(), so a failed migration does not leave the server reachable from an address
-      # nobody is watching any more.
-      - name: Close the database again
-        if: always() && steps.firewall.outcome == 'success'
-        run: |
-          az postgres flexible-server firewall-rule delete \
-            --resource-group "$AZURE_RESOURCE_GROUP" \
-            --server-name "$AZURE_POSTGRES_SERVER" \
-            --name "$FIREWALL_RULE" \
-            --yes --output none
-
       - name: Deploy to App Service
         run: |
           az webapp deploy \
@@ -355,10 +246,17 @@ jobs:
             --type zip \
             --output none
 
-      # Azure accepting the package is not evidence the game is running. This is.
+      # No migration step here. The application brings its own SQLite file up to date when it
+      # starts, because that file lives on the instance the code was just deployed to. The
+      # readiness check below is what proves the migration succeeded: it opens the database.
+      #
+      # Azure accepting the package is not evidence the game is running. This is. The budget
+      # is generous because the Free tier has no Always On, so the first request after a
+      # deployment pays for a cold start and the migration together.
       - name: Smoke test the deployment
         env:
           STAGING_BASE_URL: ${{ steps.target.outputs.base_url }}
+          SMOKE_TIMEOUT_SECONDS: 420
         run: scripts/smoke-staging.sh "$STAGING_BASE_URL"
 
       - name: Record the result

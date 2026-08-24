@@ -19,14 +19,13 @@ param gitHubEnvironment string
 
 param siteName string
 
-param databaseServerName string
-
-@description('The custom firewall-only role defined alongside this environment.')
-param databaseFirewallRoleDefinitionId string
-
 @description('''
 Built-in Website Contributor: publish, restart and read a site's configuration. Not
-Contributor, which on a resource group would let a deployment delete the database.
+Contributor on the resource group, which would also let a deployment delete the telemetry
+and the email resources.
+
+This is the only permission the deployment has. The database is a file inside the site, so
+there is nothing else in the subscription for a deployment to reach.
 ''')
 var websiteContributorRoleId = 'de139f84-1756-47ae-9be6-808fbbe84772'
 
@@ -51,27 +50,11 @@ resource site 'Microsoft.Web/sites@2024-11-01' existing = {
   name: siteName
 }
 
-resource databaseServer 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' existing = {
-  name: databaseServerName
-}
-
 resource publishAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: site
   name: guid(site.id, identity.id, websiteContributorRoleId)
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', websiteContributorRoleId)
-    principalId: identity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-// Enough to open a rule for the runner applying migrations and close it again, and nothing
-// else on the server.
-resource firewallAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: databaseServer
-  name: guid(databaseServer.id, identity.id, databaseFirewallRoleDefinitionId)
-  properties: {
-    roleDefinitionId: databaseFirewallRoleDefinitionId
     principalId: identity.properties.principalId
     principalType: 'ServicePrincipal'
   }

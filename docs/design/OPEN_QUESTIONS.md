@@ -187,7 +187,7 @@ No longer open for Browser V1:
 - React + TypeScript + Vite;
 - PixiJS for future combat rendering;
 - ASP.NET Core .NET 10;
-- EF Core + PostgreSQL;
+- EF Core, with SQLite for the Browser V1 prototype and PostgreSQL for real production;
 - ASP.NET Core Identity + secure browser cookies;
 - server-authoritative state/combat;
 - GitHub Actions + Azure target;

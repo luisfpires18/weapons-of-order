@@ -14,7 +14,7 @@
 
   <!--
     The simulator only, with no host and no database. These tests are the reason the combat
-    project has no other references: a rule that needs PostgreSQL running to be checked is a
+    project has no other references: a rule that needs a database running to be checked is a
     rule that will be checked less often.
   -->
   <ItemGroup>

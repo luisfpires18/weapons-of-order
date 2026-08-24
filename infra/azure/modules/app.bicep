@@ -1,5 +1,5 @@
-// The Linux App Service that serves the whole game from one origin: the built React client
-// and the PWA files as static content, and /api from the same process.
+// The Linux App Service that is the whole of Browser V1 staging: the built React client, the
+// PWA files, /api, and the SQLite database, in one process on one instance.
 
 param location string
 
@@ -9,9 +9,18 @@ param siteName string
 
 param planSku string
 
+param planTier string
+
 param linuxRuntimeStack string
 
 param startupCommand string
+
+@description('''
+Where the SQLite database lives. Under /home, which is App Service's persistent share, and
+deliberately NOT under the deployed application: a zip deployment replaces wwwroot, and a
+database inside it would be replaced with it.
+''')
+param databasePath string
 
 param workspaceId string
 
@@ -25,44 +34,26 @@ param emailEndpoint string
 @description('So the site identity can be granted the right to send on it.')
 param communicationServiceName string
 
-param databaseHost string
-
-param databaseName string
-
-@description('The restricted role the application connects as. Not the server administrator.')
-param databaseRuntimeLogin string
-
-@secure()
-param databaseRuntimePassword string
-
 @description('''
 Built-in role allowing an identity to send through a Communication Services resource.
 Communication and Email Service Owner.
 ''')
 var communicationSenderRoleId = '09976791-48a7-449e-bb21-39d1a415f350'
 
-// F1 has no Always On, so asking for it fails the deployment rather than being ignored.
-var alwaysOn = planSku != 'F1'
+// Free and Shared plans do not offer Always On, and asking for it fails the deployment
+// rather than being ignored. A cold start on the first request after an idle period is the
+// price of the tier, and is acceptable for a prototype nobody is waiting on.
+var alwaysOn = planTier != 'Free' && planTier != 'Shared'
 
-// Maximum Pool Size is well under what a Burstable B1ms server allows (its max_connections
-// is in the low tens), so a pool that fills does not lock the administrator out of the
-// server it needs to be repaired from.
-//
-// VerifyFull, not Require: Require encrypts without checking who answered. Azure's
-// certificate chain is in the platform trust store, so there is no reason to accept less.
-var runtimeConnectionString = join(
-  [
-    'Host=${databaseHost}'
-    'Port=5432'
-    'Database=${databaseName}'
-    'Username=${databaseRuntimeLogin}'
-    'Password=${databaseRuntimePassword}'
-    'SSL Mode=VerifyFull'
-    'Maximum Pool Size=20'
-    'Timeout=15'
-  ],
-  ';'
-)
+// Health check is a Basic-and-above feature. On Free there is nothing to configure, and the
+// deployment's own smoke test is what proves the application came up.
+var healthCheckPath = alwaysOn ? '/api/health' : null
+
+// Default Timeout is SQLite's busy timeout. One process, but many concurrent requests within
+// it: a write that arrives during another write should wait rather than fail. Write-ahead
+// logging, which is what keeps reads out of that queue entirely, is turned on by the
+// application at startup.
+var connectionString = 'Data Source=${databasePath};Default Timeout=30'
 
 resource plan 'Microsoft.Web/serverfarms@2024-11-01' = {
   name: planName
@@ -70,6 +61,7 @@ resource plan 'Microsoft.Web/serverfarms@2024-11-01' = {
   kind: 'linux'
   sku: {
     name: planSku
+    tier: planTier
   }
   properties: {
     reserved: true
@@ -81,8 +73,8 @@ resource app 'Microsoft.Web/sites@2024-11-01' = {
   location: location
   kind: 'app,linux'
   identity: {
-    // Used to send account email. Nothing else: the database is reached with a password,
-    // and the application holds no Azure subscription credential of any kind.
+    // Used to send account email. Nothing else: the database is a file on this instance, and
+    // the application holds no Azure subscription credential of any kind.
     type: 'SystemAssigned'
   }
   properties: {
@@ -95,13 +87,10 @@ resource app 'Microsoft.Web/sites@2024-11-01' = {
       linuxFxVersion: linuxRuntimeStack
       appCommandLine: startupCommand
       alwaysOn: alwaysOn
+      healthCheckPath: healthCheckPath
       http20Enabled: true
       minTlsVersion: '1.2'
       ftpsState: 'Disabled'
-      // Liveness, not readiness. App Service recycles an instance that fails this check,
-      // and a database outage is not something restarting the process fixes. Readiness is
-      // checked by the deployment smoke test instead.
-      healthCheckPath: '/api/health'
       // The client is precompiled and published; there is nothing for the platform's build
       // system to do, and letting it try is a way to fail a deployment for no reason.
       remoteDebuggingEnabled: false
@@ -119,7 +108,13 @@ resource settings 'Microsoft.Web/sites/config@2024-11-01' = {
 
     // Not Development, so: no development notification endpoint, no captured links, no
     // developer exception page, Secure cookies, and account email through a real provider.
-    ConnectionStrings__WeaponsOfOrder: runtimeConnectionString
+    ConnectionStrings__WeaponsOfOrder: connectionString
+
+    // One instance, one file, and the file lives on the instance. The schema travels with
+    // the code, so the application applies its own migrations before serving anything. A
+    // real PostgreSQL production environment would turn this off and migrate from outside.
+    Database__MigrateOnStartup: 'true'
+
     Auth__ClientBaseUrl: 'https://${app.properties.defaultHostName}'
 
     // This process sits behind the App Service front end, so the scheme and the caller's
@@ -160,7 +155,7 @@ resource disableFtpBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPoli
 
 // Platform and console logs to the workspace. Without these, a container that exits before
 // the application starts leaves nothing behind but a 503, and Application Insights never
-// saw the process at all.
+// saw the process at all — which on a tier with cold starts is the failure to expect.
 resource diagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   scope: app
   name: 'to-log-analytics'
@@ -203,5 +198,4 @@ output name string = app.name
 
 output defaultHostName string = app.properties.defaultHostName
 
-@description('Every address the site can leave from on this plan, comma-separated.')
-output possibleOutboundIpAddresses string = app.properties.possibleOutboundIpAddresses
+output databasePath string = databasePath

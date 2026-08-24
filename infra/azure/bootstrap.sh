@@ -2,22 +2,23 @@
 #
 # Creates the Weapons of Order staging environment from nothing.
 #
-#   export WOO_PG_ADMIN_PASSWORD="$(openssl rand -base64 30)"
-#   export WOO_PG_APP_PASSWORD="$(openssl rand -base64 30)"
 #   infra/azure/bootstrap.sh
 #
 # Runs anywhere the Azure CLI is signed in, including the Azure Portal's Cloud Shell, which
-# already has az, bicep and psql and is already authenticated as you.
+# already has az, bicep and python3 and is already authenticated as you.
+#
+# There is nothing to pass it. Browser V1 keeps its data in a SQLite file on the App Service
+# instance, so there is no database server, no administrator password and no application
+# password to generate or remember.
 #
 # What it does, in order: checks the subscription, registers the resource providers, confirms
-# the runtime and database versions exist in the region, shows a what-if, deploys, creates the
-# application's restricted database role, and prints everything the GitHub `staging`
-# Environment needs.
+# the .NET runtime is offered in the region, shows a what-if, deploys, and prints everything
+# the GitHub `staging` Environment needs.
 #
-# THIS CREATES BILLABLE RESOURCES. See docs/deployment/AZURE_STAGING.md for what they cost.
+# The App Service plan is the Free tier, so this environment has no fixed monthly cost. See
+# docs/deployment/AZURE_STAGING.md for what is still usage-based.
 #
-# Safe to re-run. The deployment is declarative and the role script resets a password rather
-# than failing on an existing role.
+# Safe to re-run: the deployment is declarative.
 set -euo pipefail
 
 readonly ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -26,21 +27,11 @@ readonly PARAMETERS="$ROOT/infra/azure/main.bicepparam"
 readonly DEPLOYMENT_NAME="${WOO_DEPLOYMENT_NAME:-woo-staging}"
 readonly LOCATION="${WOO_LOCATION:-westeurope}"
 
-# Named after nothing in particular, and removed in a trap, so an interrupted run does not
-# leave the database reachable from an address nobody is watching.
-readonly BOOTSTRAP_RULE="bootstrap-$(date +%s)"
-
-# Parsing for the Azure CLI listings below. Kept in its own file because Azure changes the
+# Parsing for the Azure CLI listing below. Kept in its own file because Azure changes the
 # shape of that output, and a check that reads it has to be verifiable without an Azure
 # subscription: see lib/az-output.test.sh.
 # shellcheck source=./lib/az-output.sh
 . "$ROOT/infra/azure/lib/az-output.sh"
-
-# Where libpq should look for its trusted roots. `sslmode=verify-full` alone does not say
-# what to verify against, and libpq's default is a per-user file that does not exist on a
-# fresh Cloud Shell.
-# shellcheck source=./lib/psql-tls.sh
-. "$ROOT/infra/azure/lib/psql-tls.sh"
 
 die() { printf '\nERROR: %s\n' "$1" >&2; exit 1; }
 
@@ -49,17 +40,6 @@ step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
 # --- Preconditions -----------------------------------------------------------------------
 
 az account show --output none 2>/dev/null || die "Not signed in. Run 'az login' first."
-
-[ -n "${WOO_PG_ADMIN_PASSWORD:-}" ] || die "WOO_PG_ADMIN_PASSWORD is not set. Generate one with: openssl rand -base64 30"
-[ -n "${WOO_PG_APP_PASSWORD:-}" ] || die "WOO_PG_APP_PASSWORD is not set. Generate one with: openssl rand -base64 30"
-[ "$WOO_PG_ADMIN_PASSWORD" != "$WOO_PG_APP_PASSWORD" ] || die "The two passwords must differ. The point of the second role is that it is not the administrator."
-
-command -v psql >/dev/null || die "psql is not on PATH. It is needed to create the application's database role."
-
-# Resolved now rather than at the moment of use, so a machine with no usable CA store is
-# turned away before any resource is created rather than after. Lowering sslmode is not an
-# alternative: verify-full is what proves the server answering is Azure's.
-sslrootcert="$(azure_postgres_sslrootcert)" || die "No CA trust store was found for psql. Install the ca-certificates package, or use a psql from PostgreSQL 16 or later, which reads the system store directly."
 
 subscription="$(az account show --query name --output tsv)"
 step "Subscription: $subscription"
@@ -71,18 +51,18 @@ read -r -p $'\nProvision staging into this subscription? Type yes to continue: '
 # --- Resource providers ------------------------------------------------------------------
 
 step "Registering resource providers"
-for provider in Microsoft.Web Microsoft.DBforPostgreSQL Microsoft.Communication \
+for provider in Microsoft.Web Microsoft.Communication \
                 Microsoft.OperationalInsights Microsoft.Insights Microsoft.ManagedIdentity; do
     printf '    %s\n' "$provider"
     az provider register --namespace "$provider" --wait --output none
 done
 
-# --- Availability. Do not assume; both lists move. ----------------------------------------
+# --- Availability. Do not assume; the stack list moves. ------------------------------------
 
-step "Checking the runtime and database versions are available in $LOCATION"
+step "Checking the .NET runtime is available in $LOCATION"
 
-# Both checks read what the repository actually asks for rather than a copy of it, so a
-# parameter change cannot leave the check verifying the previous value.
+# Read from the parameter file rather than a copy of it, so a parameter change cannot leave
+# the check verifying the previous value.
 runtime="$(az_bicepparam_value linuxRuntimeStack "$PARAMETERS")"
 [ -n "$runtime" ] || die "Could not read 'linuxRuntimeStack' from $PARAMETERS."
 
@@ -99,23 +79,6 @@ else
     printf '    Available .NET stacks:\n' >&2
     printf '%s\n' "$runtimes" | az_runtime_identifiers | grep '^DOTNETCORE' | sed 's/^/      /' >&2
     die "Stop here and decide with the creator: a different region, or a self-contained publish."
-fi
-
-pg_version="$(az_bicepparam_value postgresVersion "$PARAMETERS")"
-[ -n "$pg_version" ] || die "Could not read 'postgresVersion' from $PARAMETERS."
-
-pg_versions="$(az postgres flexible-server list-skus --location "$LOCATION" \
-    --query "[].supportedServerVersions[].name" --output tsv)"
-[ -n "$pg_versions" ] || die "'az postgres flexible-server list-skus --location $LOCATION' returned nothing. Check the region name and that the CLI is signed in."
-
-if printf '%s\n' "$pg_versions" | az_postgres_major_versions | az_contains_exactly "$pg_version"; then
-    printf '    PostgreSQL %s: available\n' "$pg_version"
-else
-    printf '\n    PostgreSQL %s was NOT found in %s.\n' "$pg_version" "$LOCATION" >&2
-    printf '    Do NOT change the major version to match; local development and CI run %s.\n' "$pg_version" >&2
-    printf '    Available major versions:\n' >&2
-    printf '%s\n' "$pg_versions" | az_postgres_major_versions | sort -u | sed 's/^/      /' >&2
-    die "Stop here and decide with the creator: a different region, or a different major version."
 fi
 
 # --- Preview, then deploy -----------------------------------------------------------------
@@ -145,43 +108,11 @@ read_output() { printf '%s' "$outputs" | python3 -c "import json,sys;print(json.
 resource_group="$(read_output resourceGroup)"
 staging_url="$(read_output stagingUrl)"
 web_app="$(read_output webAppName)"
-db_server="$(read_output databaseServerName)"
-db_host="$(read_output databaseHost)"
-db_name="$(read_output databaseName)"
-db_admin="$(read_output databaseAdministratorLogin)"
-db_runtime="$(read_output databaseRuntimeLogin)"
+database_path="$(read_output databasePath)"
 sender="$(read_output emailSenderAddress)"
 client_id="$(read_output deploymentIdentityClientId)"
 tenant_id="$(read_output tenantId)"
 subscription_id="$(read_output subscriptionId)"
-
-# --- The one part Resource Manager cannot do ----------------------------------------------
-
-close_firewall() {
-    az postgres flexible-server firewall-rule delete \
-        --resource-group "$resource_group" --server-name "$db_server" \
-        --name "$BOOTSTRAP_RULE" --yes --output none 2>/dev/null || true
-}
-trap close_firewall EXIT
-
-step "Creating the application's restricted database role"
-my_ip="$(curl --fail --silent --show-error --max-time 15 https://api.ipify.org)"
-az postgres flexible-server firewall-rule create \
-    --resource-group "$resource_group" --server-name "$db_server" \
-    --name "$BOOTSTRAP_RULE" \
-    --start-ip-address "$my_ip" --end-ip-address "$my_ip" \
-    --output none
-
-PGPASSWORD="$WOO_PG_ADMIN_PASSWORD" psql \
-    "$(azure_postgres_conninfo "$db_host" "$db_name" "$db_admin" "$sslrootcert")" \
-    --set=ON_ERROR_STOP=1 \
-    --set=runtime_role="$db_runtime" \
-    --set=admin_role="$db_admin" \
-    --set=runtime_password="$WOO_PG_APP_PASSWORD" \
-    --file "$ROOT/infra/azure/database/create-runtime-role.sql"
-
-close_firewall
-trap - EXIT
 
 # --- What the creator still has to do ------------------------------------------------------
 
@@ -197,27 +128,26 @@ cat <<SUMMARY
 NEXT: create a GitHub Environment named exactly  staging
       Settings -> Environments -> New environment
 
-Variables (none of these is a secret):
+Variables (all five; none of them is a secret):
 
   AZURE_CLIENT_ID          $client_id
   AZURE_TENANT_ID          $tenant_id
   AZURE_SUBSCRIPTION_ID    $subscription_id
   AZURE_RESOURCE_GROUP     $resource_group
   AZURE_WEBAPP_NAME        $web_app
-  AZURE_POSTGRES_SERVER    $db_server
-  POSTGRES_DATABASE        $db_name
-  POSTGRES_ADMIN_LOGIN     $db_admin
-  POSTGRES_RUNTIME_LOGIN   $db_runtime
 
-Secrets (one):
+Secrets: none.
 
-  POSTGRES_ADMIN_PASSWORD  the value of \$WOO_PG_ADMIN_PASSWORD
+There is no Azure client secret: deployment exchanges a short-lived GitHub OIDC token for
+the identity above. There is no database secret either, because there is no database server.
 
-There is deliberately no Azure client secret. Deployment authenticates by exchanging a
-short-lived GitHub OIDC token for the identity above.
+The database is a SQLite file at:
 
-Keep both database passwords in your password manager. The runtime one is already an
-App Service application setting and is not needed by GitHub.
+  $database_path
+
+It is on the instance's persistent /home share and outside the deployed application, so a
+redeployment leaves it alone. The application applies its own migrations at startup. It is
+not backed up: prototype data is disposable by decision.
 
 Account email will arrive from:  $sender
 Expect it in the spam folder — the generated domain has no reputation.

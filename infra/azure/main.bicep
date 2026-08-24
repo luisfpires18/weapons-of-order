@@ -1,16 +1,18 @@
 // Weapons of Order staging infrastructure.
 //
 // One deployment creates everything staging needs and nothing it does not: a resource group
-// of its own, one Linux App Service serving both the React client and /api, one PostgreSQL
-// Flexible Server, Application Insights over a capped Log Analytics workspace, Azure
-// Communication Services for account email, and the federated identity GitHub Actions
-// deploys with.
+// of its own, one Linux App Service on the Free tier serving both the React client and /api,
+// Application Insights over a capped Log Analytics workspace, Azure Communication Services
+// for account email, and the federated identity GitHub Actions deploys with.
+//
+// There is no database resource. Browser V1 is a prototype with one player, so its store is a
+// SQLite file on the App Service instance's own persistent /home share — nothing to run,
+// nothing to pay for, and nothing to keep patched. PostgreSQL remains the intended direction
+// for a real production environment; see docs/architecture/TECH_STACK.md.
 //
 //   az deployment sub what-if --location westeurope --template-file infra/azure/main.bicep --parameters infra/azure/main.bicepparam
 //
-// Every SKU, version, region and name is a parameter. Nothing here is a secret except
-// postgresAdministratorPassword, which is @secure() and must be supplied at deployment time
-// — never from a committed parameter file.
+// Every SKU, version, region and name is a parameter, and nothing here is a secret.
 targetScope = 'subscription'
 
 // ---------------------------------------------------------------------------------------
@@ -27,7 +29,7 @@ param namePrefix string = 'woo'
 @maxLength(12)
 param environmentName string = 'staging'
 
-@description('Azure region. Verify SKU and PostgreSQL version availability before changing.')
+@description('Azure region. Verify runtime availability before changing.')
 param location string = 'westeurope'
 
 @description('Resource group holding the whole environment. Deleting it deletes the environment.')
@@ -47,9 +49,9 @@ param uniqueSuffix string = substring(uniqueString(subscription().subscriptionId
 // ---------------------------------------------------------------------------------------
 
 @description('''
-App Service plan SKU. B1 is the smallest that supports Always On, which a game with a cold
-EF Core and PixiJS start wants. F1 is free but has a daily CPU quota, no Always On and
-constant cold starts.
+App Service plan SKU. F1 is the Free tier and is what Browser V1 staging runs on: no Always
+On, cold starts, and a daily CPU quota, all of which are acceptable for a prototype with one
+player. B1 buys Always On and a health check probe if that ever matters.
 ''')
 @allowed([
   'F1'
@@ -57,7 +59,15 @@ constant cold starts.
   'B2'
   'P0v3'
 ])
-param appServicePlanSku string = 'B1'
+param appServicePlanSku string = 'F1'
+
+@description('Must match the SKU. Free for F1, Basic for B1/B2, PremiumV3 for P0v3.')
+@allowed([
+  'Free'
+  'Basic'
+  'PremiumV3'
+])
+param appServicePlanTier string = 'Free'
 
 @description('''
 Linux runtime stack. Confirm against `az webapp list-runtimes --os-type linux` for the
@@ -73,57 +83,20 @@ artifact that gains a second assembly still starts the right one.
 param appStartupCommand string = 'dotnet WeaponsOfOrder.Api.dll'
 
 // ---------------------------------------------------------------------------------------
-// Database
+// Persistence
 // ---------------------------------------------------------------------------------------
 
-@description('PostgreSQL major version. Local development and CI run 18.')
-param postgresVersion string = '18'
-
-@description('Compute SKU. Burstable B1ms is the smallest that exists; staging has one player.')
-param postgresSkuName string = 'Standard_B1ms'
-
-@allowed([
-  'Burstable'
-  'GeneralPurpose'
-  'MemoryOptimized'
-])
-param postgresSkuTier string = 'Burstable'
-
-@description('Storage in GiB. 32 is the smallest Flexible Server accepts. It cannot be shrunk later.')
-param postgresStorageGb int = 32
-
-@description('Backup retention in days. 7 is the minimum and is included in the storage price.')
-@minValue(7)
-@maxValue(35)
-param postgresBackupRetentionDays int = 7
-
-@description('The staging database. Deliberately not the local or CI database name.')
-param databaseName string = 'weapons_of_order_staging'
-
 @description('''
-Server administrator login. Used by migrations only. The application connects as a separate
-restricted role created by infra/azure/database/create-runtime-role.sql.
-''')
-param postgresAdministratorLogin string = 'woo_admin'
+The SQLite database file.
 
-@description('Server administrator password. Supply at deployment time; never commit it.')
-@secure()
-param postgresAdministratorPassword string
+It must stay under /home, which is the only persistent filesystem an App Service instance
+has, and it must stay OUTSIDE the deployed application: a zip deployment replaces the
+application directory wholesale, and a database inside it would be replaced with it. /home
+is persistent by default for a built-in Linux runtime, so no storage setting is needed.
 
-@description('''
-The restricted role the running application connects as. It is created by
-infra/azure/database/create-runtime-role.sql, not by Bicep, because Azure Resource Manager
-cannot create a PostgreSQL role. Use the same login and password in both places.
+Backed up by nothing. Prototype data is disposable by decision.
 ''')
-param postgresRuntimeLogin string = 'woo_app'
-
-@description('''
-Password for the application database role. Supply at deployment time; never commit it.
-Separate from the administrator password on purpose: the running application can read and
-write the game rows and cannot create, drop or alter a table.
-''')
-@secure()
-param postgresRuntimePassword string
+param databasePath string = '/home/data/weapons-of-order.db'
 
 // ---------------------------------------------------------------------------------------
 // Telemetry
@@ -193,22 +166,6 @@ module monitoring 'modules/monitoring.bicep' = {
   }
 }
 
-module database 'modules/database.bicep' = {
-  scope: group
-  params: {
-    location: location
-    serverName: 'psql-${affix}-${uniqueSuffix}'
-    databaseName: databaseName
-    postgresVersion: postgresVersion
-    skuName: postgresSkuName
-    skuTier: postgresSkuTier
-    storageGb: postgresStorageGb
-    backupRetentionDays: postgresBackupRetentionDays
-    administratorLogin: postgresAdministratorLogin
-    administratorPassword: postgresAdministratorPassword
-  }
-}
-
 module email 'modules/email.bicep' = {
   scope: group
   params: {
@@ -225,54 +182,15 @@ module app 'modules/app.bicep' = {
     planName: 'plan-${affix}'
     siteName: 'app-${affix}-${uniqueSuffix}'
     planSku: appServicePlanSku
+    planTier: appServicePlanTier
     linuxRuntimeStack: linuxRuntimeStack
     startupCommand: appStartupCommand
+    databasePath: databasePath
     workspaceId: monitoring.outputs.workspaceId
     applicationInsightsConnectionString: monitoring.outputs.connectionString
     emailSenderAddress: email.outputs.senderAddress
     emailEndpoint: email.outputs.endpoint
     communicationServiceName: email.outputs.communicationServiceName
-    databaseHost: database.outputs.fullyQualifiedDomainName
-    databaseName: databaseName
-    databaseRuntimeLogin: postgresRuntimeLogin
-    databaseRuntimePassword: postgresRuntimePassword
-  }
-}
-
-// Separate from the app module so it can depend on both: the rules are built from the
-// site's own outbound addresses, which do not exist until the site does.
-module databaseAccess 'modules/database-firewall.bicep' = {
-  scope: group
-  params: {
-    serverName: database.outputs.name
-    outboundIpAddresses: app.outputs.possibleOutboundIpAddresses
-  }
-}
-
-// A role that can manage this server's firewall rules and read nothing else. Exists because
-// migrations run from a GitHub-hosted runner whose address is not known in advance, so the
-// deployment opens a rule for itself and removes it again. Contributor would let the same
-// identity delete the database.
-resource databaseFirewallRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
-  name: guid(subscription().id, resourceGroupName, 'postgres-firewall')
-  properties: {
-    roleName: 'Weapons of Order PostgreSQL firewall (${resourceGroupName})'
-    description: 'Create, read and delete firewall rules on a PostgreSQL Flexible Server. Nothing else.'
-    type: 'CustomRole'
-    assignableScopes: [
-      subscription().id
-    ]
-    permissions: [
-      {
-        actions: [
-          'Microsoft.DBforPostgreSQL/flexibleServers/read'
-          'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules/read'
-          'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules/write'
-          'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules/delete'
-        ]
-        notActions: []
-      }
-    ]
   }
 }
 
@@ -284,8 +202,6 @@ module deployment 'modules/deployment-identity.bicep' = {
     gitHubRepository: gitHubRepository
     gitHubEnvironment: gitHubEnvironment
     siteName: app.outputs.name
-    databaseServerName: database.outputs.name
-    databaseFirewallRoleDefinitionId: databaseFirewallRole.id
   }
 }
 
@@ -297,11 +213,7 @@ module deployment 'modules/deployment-identity.bicep' = {
 output resourceGroup string = resourceGroupName
 output stagingUrl string = 'https://${app.outputs.defaultHostName}'
 output webAppName string = app.outputs.name
-output databaseServerName string = database.outputs.name
-output databaseHost string = database.outputs.fullyQualifiedDomainName
-output databaseName string = databaseName
-output databaseAdministratorLogin string = postgresAdministratorLogin
-output databaseRuntimeLogin string = postgresRuntimeLogin
+output databasePath string = app.outputs.databasePath
 output emailSenderAddress string = email.outputs.senderAddress
 output applicationInsightsName string = monitoring.outputs.applicationInsightsName
 

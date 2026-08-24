@@ -19,7 +19,7 @@ builder.Configuration.AddWeaponsOfOrderContent(builder.Environment);
 builder.Services.AddProblemDetails();
 builder.Services.AddWeaponsOfOrderHosting(builder.Configuration);
 builder.Services.AddWeaponsOfOrderTelemetry(builder.Configuration);
-builder.Services.AddWeaponsOfOrderPersistence(builder.Configuration);
+builder.Services.AddWeaponsOfOrderPersistence(builder.Configuration, builder.Environment.ContentRootPath);
 builder.Services.AddWeaponsOfOrderAuth(builder.Configuration, builder.Environment);
 builder.Services.AddWeaponsOfOrderGameContent(builder.Configuration);
 builder.Services.AddWeaponsOfOrderForge(builder.Configuration);
@@ -81,8 +81,14 @@ app.MapFallback("/api/{**rest}", () => Results.NotFound());
 // which is absent during development. See ClientHosting.
 app.MapWeaponsOfOrderClient();
 
-// Migrations are applied explicitly (`dotnet ef database update`), never on startup:
-// automatic migration on boot is unsafe once more than one instance runs.
+// Browser V1 is one App Service instance with one SQLite file on its own persistent
+// storage, so the schema travels with the code and is applied here. Off unless an
+// environment asks for it, and a failure is allowed to stop the process rather than leave it
+// answering requests against a schema that is not there. See DatabaseOptions: a real
+// PostgreSQL production environment goes back to an explicit migration step outside the
+// application, because two instances starting together would both migrate one database.
+await app.Services.MigrateWeaponsOfOrderDatabaseAsync();
+
 app.Run();
 
 /// <summary>Exposed so the API test project can host the real pipeline.</summary>

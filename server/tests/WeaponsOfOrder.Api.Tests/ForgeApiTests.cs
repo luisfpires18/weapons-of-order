@@ -464,8 +464,11 @@ public sealed class ForgeApiTests(ForgeApiFactory factory) : IClassFixture<Forge
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<WeaponsOfOrderDbContext>();
 
+        // The prototype's history is a single SQLite baseline. It was rebuilt from the
+        // current model when the provider changed, because there was no deployed data to
+        // preserve and PostgreSQL-shaped migrations could not describe a SQLite database.
         var applied = await db.Database.GetAppliedMigrationsAsync(Cancellation);
-        Assert.Contains(applied, migration => migration.EndsWith("ForgeSlice", StringComparison.Ordinal));
+        Assert.NotEmpty(applied);
         Assert.Empty(await db.Database.GetPendingMigrationsAsync(Cancellation));
 
         // Each gameplay table answers a query, which is the part a snapshot cannot prove.

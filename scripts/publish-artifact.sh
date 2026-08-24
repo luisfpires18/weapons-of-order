@@ -89,8 +89,16 @@ echo "    ok  wwwroot/assets/*.js"
 [ -e "$OUTPUT_DIR/wwwroot/sw.js" ] || fail "missing wwwroot/sw.js"
 echo "    ok  wwwroot/sw.js"
 
+# The database is not part of the application. In staging it lives at /home/data, outside
+# everything a deployment replaces; shipping one inside the package would either overwrite a
+# live database or hand the deployment a stale copy of somebody's game.
+for stray in $(cd "$OUTPUT_DIR" && find . -name '*.db' -o -name '*.db-wal' -o -name '*.db-shm' 2>/dev/null); do
+    fail "the artifact contains a database file: $stray"
+done
+echo "    ok  no database file"
+
 # Local development configuration, and anything that looks like a local secret.
-refuse "appsettings.Development.json" "it carries the local development database credentials"
+refuse "appsettings.Development.json" "it points at the local development database"
 refuse ".env" "environment files are never deployed"
 refuse ".env.local" "environment files are never deployed"
 refuse "appsettings.Local.json" "local overrides are never deployed"

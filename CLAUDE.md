@@ -114,7 +114,7 @@ High-level locked direction:
 - desktop + mobile PWA simultaneously;
 - PixiJS for the future combat rendering surface;
 - ASP.NET Core .NET 10 backend;
-- EF Core + PostgreSQL;
+- EF Core, with SQLite for the Browser V1 prototype and PostgreSQL for real production;
 - ASP.NET Core Identity + secure cookie browser sessions;
 - server-authoritative game state;
 - deterministic server-side combat simulation;

@@ -228,7 +228,7 @@ internal sealed class PreparationService(
 
         // One grant per transaction, rather than the whole roster in one write. Two first
         // loads arriving together would otherwise each hold index entries the other is
-        // waiting for, and PostgreSQL would break the tie by killing one of them with a
+        // waiting for, and the database would break the tie by failing one of them with a
         // deadlock. A single-row transaction holds one lock and cannot deadlock: the loser
         // simply finds the grant already taken.
         foreach (var definition in missing)

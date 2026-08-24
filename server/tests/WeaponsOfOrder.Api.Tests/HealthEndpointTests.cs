@@ -30,7 +30,7 @@ public sealed class HealthEndpointTests(WeaponsOfOrderApiFactory factory)
     {
         var response = await _client.GetAsync("/api/health/ready", TestContext.Current.CancellationToken);
 
-        // Status depends on whether PostgreSQL is reachable from the test host, so the
+        // Status depends on whether the database file is reachable from the test host, so the
         // assertion is about the contract, not the verdict.
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(
             TestContext.Current.CancellationToken);

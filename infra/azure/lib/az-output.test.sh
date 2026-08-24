@@ -50,18 +50,6 @@ NODE|22-lts'
 runtimes_preview_only=$'DOTNETCORE|10.0-preview\t2026-01-01\tLinux\t.NET\tPreview\t10.0 preview
 DOTNETCORE|9.0\t2026-05-12\tLinux\t.NET\tActive\t9.0 (STS)'
 
-postgres_bare_majors=$'18
-17
-16
-15'
-
-postgres_with_minors=$'18.4
-17.10
-16.9'
-
-postgres_without_18=$'17
-16
-15'
 
 # --- The identifier must be read out of the first column, not the whole line ----------------
 
@@ -101,28 +89,6 @@ check "a trailing carriage return does not defeat the comparison" \
     "yes" \
     "$(found "$(printf 'DOTNETCORE|10.0\r\tLinux\r\n' | az_runtime_identifiers)" 'DOTNETCORE|10.0')"
 
-# --- PostgreSQL, where the major is what matters --------------------------------------------
-
-check "bare majors are matched exactly" \
-    "yes" \
-    "$(found "$(printf '%s\n' "$postgres_bare_majors" | az_postgres_major_versions)" '18')"
-
-check "a minor version still answers for its major" \
-    "yes" \
-    "$(found "$(printf '%s\n' "$postgres_with_minors" | az_postgres_major_versions)" '18')"
-
-check "an absent major is reported absent rather than approximated" \
-    "no" \
-    "$(found "$(printf '%s\n' "$postgres_without_18" | az_postgres_major_versions)" '18')"
-
-check "a major is not matched by a prefix of another" \
-    "no" \
-    "$(found "$(printf '%s\n' "$postgres_bare_majors" | az_postgres_major_versions)" '1')"
-
-check "minors collapse to their major" \
-    $'18\n17\n16' \
-    "$(printf '%s\n' "$postgres_with_minors" | az_postgres_major_versions)"
-
 # --- Reading the parameter file, which is what decides what is being looked for --------------
 
 parameters="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/main.bicepparam"
@@ -131,9 +97,9 @@ check "the runtime stack is read from main.bicepparam" \
     'DOTNETCORE|10.0' \
     "$(az_bicepparam_value linuxRuntimeStack "$parameters")"
 
-check "the PostgreSQL version is read from main.bicepparam" \
-    '18' \
-    "$(az_bicepparam_value postgresVersion "$parameters")"
+check "the App Service tier is read from main.bicepparam" \
+    'Free' \
+    "$(az_bicepparam_value appServicePlanTier "$parameters")"
 
 check "an absent parameter yields nothing rather than a stale value" \
     "" \

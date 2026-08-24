@@ -11,14 +11,14 @@ internal sealed class WeaponsOfOrderDbContextFactory : IDesignTimeDbContextFacto
 {
     public WeaponsOfOrderDbContext CreateDbContext(string[] args)
     {
-        // Migration scaffolding only needs a syntactically valid Npgsql connection string;
+        // Migration scaffolding only needs a syntactically valid SQLite connection string;
         // it does not connect. Applying migrations still goes through the API configuration.
         var connectionString =
             Environment.GetEnvironmentVariable($"ConnectionStrings__{PersistenceServiceCollectionExtensions.ConnectionStringName}")
-            ?? "Host=localhost;Port=5433;Database=weapons_of_order;Username=woo_dev;Password=woo_dev";
+            ?? "Data Source=weapons-of-order-design.db";
 
         var options = new DbContextOptionsBuilder<WeaponsOfOrderDbContext>()
-            .UseNpgsql(connectionString)
+            .UseSqlite(connectionString)
             .Options;
 
         return new WeaponsOfOrderDbContext(options);

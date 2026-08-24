@@ -72,7 +72,7 @@ echo
 # --- Liveness: the process is up and answering. -----------------------------------------
 await "liveness /api/health reports Healthy" healthy "$BASE_URL/api/health"
 
-# --- Readiness: it can reach PostgreSQL. Separate on purpose; a database outage is not a
+# --- Readiness: it can open its database. Separate on purpose; a database fault is not a
 # --- reason to restart the process, so this is checked here rather than by the platform.
 await "readiness /api/health/ready reports Healthy" healthy "$BASE_URL/api/health/ready"
 

@@ -23,14 +23,6 @@ az_runtime_identifiers() {
     tr -d '\r' | cut -f1 | grep -v '^[[:space:]]*$' || true
 }
 
-# Major versions from `az postgres flexible-server list-skus --query "[].supportedServerVersions[].name"`.
-#
-# Answers `18` for both `18` and `18.4`: the query has returned each form, and the check is
-# about the major version. The first field is taken for the same reason as above.
-az_postgres_major_versions() {
-    tr -d '\r' | cut -f1 | sed 's/\..*$//' | grep -v '^[[:space:]]*$' || true
-}
-
 # True when the argument appears as a whole line on stdin.
 #
 # Fixed-string and whole-line, both deliberately. A runtime identifier contains `|` and `.`,

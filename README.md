@@ -20,24 +20,25 @@ server/
     Preparation/                      Inventory, Units and weapon loadouts
     Security/                         Antiforgery and authorization conventions
   src/WeaponsOfOrder.Combat/          The deterministic combat simulator — no dependencies
-  src/WeaponsOfOrder.Infrastructure/  EF Core / PostgreSQL persistence and migrations
+  src/WeaponsOfOrder.Infrastructure/  EF Core / SQLite persistence and migrations
     Gameplay/                         Player-owned game entities
   tests/WeaponsOfOrder.Api.Tests/     API, account and configuration tests
   tests/WeaponsOfOrder.Combat.Tests/  Combat rules, against no host and no database
 art/                                  Shared art, aliased into the client as @art
 infra/azure/                          Staging infrastructure as Bicep — see its README
 scripts/                              Artifact build and deployment smoke test
-docker-compose.yml                    Local development PostgreSQL
+.data/                                The local SQLite database. Git-ignored, disposable.
 ```
 
 ## Prerequisites
 
-| Tool       | Version   | Pinned by                              |
-| ---------- | --------- | -------------------------------------- |
-| Node       | 22.23.2   | [`.nvmrc`](.nvmrc)                     |
-| pnpm       | 10.34.0   | `packageManager` in `web/package.json` |
-| .NET SDK   | 10.0.200+ | [`global.json`](global.json)           |
-| PostgreSQL | 18        | [`docker-compose.yml`](docker-compose.yml) |
+| Tool     | Version   | Pinned by                              |
+| -------- | --------- | -------------------------------------- |
+| Node     | 22.23.2   | [`.nvmrc`](.nvmrc)                     |
+| pnpm     | 10.34.0   | `packageManager` in `web/package.json` |
+| .NET SDK | 10.0.200+ | [`global.json`](global.json)           |
+
+There is no database to install. Browser V1 stores its data in a SQLite file.
 
 Enable corepack once so pnpm resolves to the pinned version:
 
@@ -48,10 +49,6 @@ corepack enable
 ## First-time setup
 
 ```bash
-docker compose up -d
-```
-
-```bash
 pnpm --dir web install
 ```
 
@@ -59,9 +56,7 @@ pnpm --dir web install
 dotnet tool restore
 ```
 
-```bash
-dotnet ef database update --project server/src/WeaponsOfOrder.Infrastructure --startup-project server/src/WeaponsOfOrder.Api
-```
+That is all. The API creates and migrates its own database on the first run.
 
 ## Run it
 
@@ -84,7 +79,7 @@ pnpm --dir web dev
 ### The combat simulator
 
 `server/src/WeaponsOfOrder.Combat` has no `PackageReference` and no `ProjectReference`, and that
-emptiness is the point: no ASP.NET, no EF Core, no Npgsql, no Identity, no HTTP, nothing that knows
+emptiness is the point: no ASP.NET, no EF Core, no database driver, no Identity, no HTTP, nothing that knows
 a browser exists. It takes a `BattleInput` and returns a `BattleResult` with a complete event log,
 and reads nothing else — no clock, no ambient randomness. The same input replays event for event.
 
@@ -107,30 +102,49 @@ pnpm --dir web build --outDir ../server/src/WeaponsOfOrder.Api/wwwroot --emptyOu
 
 ## Database
 
-`docker compose up -d` starts PostgreSQL 18 on **host port 5433** — not 5432, so it does
-not collide with a natively installed PostgreSQL.
+SQLite, through EF Core. Nothing to install, nothing to start, and nothing to pay for in
+staging. The development database is a git-ignored file:
 
-The development credentials in `docker-compose.yml` and
-`server/src/WeaponsOfOrder.Api/appsettings.Development.json` are local-only and
-intentionally committed so a fresh clone needs no configuration. Every other environment
-supplies its own connection string:
-
-```bash
-export ConnectionStrings__WeaponsOfOrder="Host=...;Database=...;Username=...;Password=..."
+```text
+.data/weapons-of-order.db
 ```
 
-`dotnet user-secrets` also works for local overrides. The API fails at startup if no
-connection string is configured rather than falling back to a default.
+A relative `Data Source` is resolved against the application's content root, so it opens the
+same file wherever `dotnet run` is invoked from. Delete the file to start over; there is
+nothing in it that is not a prototype.
 
-Migrations are applied explicitly, never on startup:
+In Development and in staging the application applies pending migrations while it starts
+(`Database:MigrateOnStartup`). It is **off** by default, so an environment has to ask for it,
+and it is only appropriate here because Browser V1 is a single instance with its own file.
+Migrations only — never `EnsureCreated`, never a drop, and no seeding.
+
+To add a migration:
 
 ```bash
 dotnet ef migrations add <Name> --project server/src/WeaponsOfOrder.Infrastructure --startup-project server/src/WeaponsOfOrder.Api --output-dir Persistence/Migrations
 ```
 
+To apply one by hand:
+
 ```bash
 dotnet ef database update --project server/src/WeaponsOfOrder.Infrastructure --startup-project server/src/WeaponsOfOrder.Api
 ```
+
+Every other environment supplies its own connection string, and the API fails at startup if
+none is configured rather than falling back to a default:
+
+```bash
+export ConnectionStrings__WeaponsOfOrder="Data Source=/home/data/weapons-of-order.db"
+```
+
+`dotnet user-secrets` also works for local overrides.
+
+**PostgreSQL remains the intended store for a real production environment.** It is not
+implemented, and Browser V1 does not half-implement it: the application is ordinary EF Core
+with no provider abstraction over it, so the change is a provider registration and a
+migration history regenerated from the model. See
+[`TECH_STACK.md`](docs/architecture/TECH_STACK.md) and the boundary written down in
+[`AZURE_STAGING.md`](docs/deployment/AZURE_STAGING.md).
 
 ## Accounts
 
@@ -207,9 +221,10 @@ Regular Unit later.
 
 ## Validation
 
-The same checks [CI](.github/workflows/ci.yml) runs. Backend first — it needs PostgreSQL
-running, because the account tests exercise Identity against the real provider and migrate
-their own `weapons_of_order_tests` database on first use:
+The same checks [CI](.github/workflows/ci.yml) runs. The backend tests need nothing
+running: they create their own SQLite database under the temporary directory and migrate it,
+and the account tests still exercise Identity against the real provider rather than a
+substitute store.
 
 ```bash
 dotnet format server/WeaponsOfOrder.slnx --verify-no-changes
@@ -275,8 +290,9 @@ It builds the client into the API's `wwwroot`, publishes on top, and then assert
 carries the game content and the PWA files and carries no local development configuration.
 Neither the client build output nor `artifacts/` is ever committed.
 
-The staging environment — Azure App Service, PostgreSQL Flexible Server, Application
-Insights, account email — is defined in [`infra/azure/`](infra/azure/README.md) and documented
+The staging environment — an Azure App Service on the Free tier, its SQLite file on
+persistent storage, Application Insights and account email — is defined in
+[`infra/azure/`](infra/azure/README.md) and documented
 in [`AZURE_STAGING.md`](docs/deployment/AZURE_STAGING.md): how to provision it, what it costs,
 what the GitHub `staging` Environment needs, how migrations are applied, and how to tear it
 all down.

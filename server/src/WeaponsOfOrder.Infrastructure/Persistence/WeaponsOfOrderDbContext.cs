@@ -46,4 +46,17 @@ public sealed class WeaponsOfOrderDbContext(DbContextOptions<WeaponsOfOrderDbCon
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(WeaponsOfOrderDbContext).Assembly);
     }
+
+    /// <summary>
+    /// One rule for every timestamp in the model, rather than a converter remembered on each
+    /// property. See <see cref="UtcTicksConverter"/>: SQLite cannot order by a
+    /// <c>DateTimeOffset</c>, and the forge and the inventory both do exactly that.
+    /// </summary>
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        base.ConfigureConventions(configurationBuilder);
+
+        // Covers DateTimeOffset? as well.
+        configurationBuilder.Properties<DateTimeOffset>().HaveConversion<UtcTicksConverter>();
+    }
 }

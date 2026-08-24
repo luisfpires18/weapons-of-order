@@ -26,13 +26,6 @@ internal static class TelemetryServiceCollectionExtensions
 
     private const string ConfiguredConnectionStringKey = "ApplicationInsights:ConnectionString";
 
-    /// <summary>
-    /// Npgsql's own <see cref="System.Diagnostics.ActivitySource"/>. The distro instruments
-    /// SqlClient, which this application does not use; without this a slow or failing query
-    /// is invisible and a request just looks slow.
-    /// </summary>
-    private const string NpgsqlActivitySource = "Npgsql";
-
     public static IServiceCollection AddWeaponsOfOrderTelemetry(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -48,9 +41,12 @@ internal static class TelemetryServiceCollectionExtensions
         services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService(HealthEndpoints.ServiceName))
             .WithTracing(tracing => tracing
-                .AddSource(NpgsqlActivitySource)
                 // Last in the pipeline, so it sees every span from every instrumentation
                 // this or the distro registers, including ones added later.
+                //
+                // No database instrumentation is registered: the store is a SQLite file in
+                // this process, so a query is not a network call and there is no dependency
+                // span to collect. A slow one shows up as a slow request.
                 .AddProcessor(new QueryStringRedactingProcessor()))
             .UseAzureMonitor(options => options.ConnectionString = connectionString);
 
