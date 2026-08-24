@@ -81,7 +81,7 @@ internal sealed record ResolvedArmy(
             member.Stats.AttackIntervalSeconds,
             member.Stats.CriticalChance,
             member.Stats.Range,
-            member.Stats.Mounted),
+            member.Stats.MovementSpeed),
         member.Role switch
         {
             ArmyRole.Active => "active",

@@ -8,9 +8,16 @@ namespace WeaponsOfOrder.Combat;
 /// that addition is the caller's job: this project has no idea what a weapon is, which is what
 /// keeps it from ever needing to know what a Rune or a piece of armour is either.
 /// <para>
-/// The six stats are exactly canon's universal set. There is no Dodge, Block, Critical Damage,
-/// Armor Penetration, Attack Power or Special Power here, because none of those are stats in
-/// this game.
+/// Six of the seven are exactly canon's universal set — HP, Power, Defense, Attack Interval,
+/// Critical Chance and Movement Speed. There is no Dodge, Block, Critical Damage, Armor
+/// Penetration, Attack Power or Special Power here, because none of those are stats in this game.
+/// The seventh is <see cref="Range"/>, which the weapon registry authors as weapon metadata and
+/// which combat cannot resolve a target without.
+/// </para>
+/// <para>
+/// Every one of them is a number. Nothing here is a flag the simulator would have to interpret:
+/// no Mounted, no kingdom, no class, no equipment identity. Whatever produced a value was resolved
+/// by the caller, which is what stops this project from slowly learning the rest of the game.
 /// </para>
 /// </remarks>
 public sealed record CombatantStats
@@ -41,9 +48,20 @@ public sealed record CombatantStats
     public required int Range { get; init; }
 
     /// <summary>
-    /// Whether the Unit is Mounted, which is the one inherent movement distinction v1 has.
+    /// How fast the combatant crosses the battlefield, as a multiple of standard movement.
     /// </summary>
-    public bool Mounted { get; init; }
+    /// <remarks>
+    /// A scalar, not a duration: <c>1.0</c> is standard, above it is faster, below it is slower.
+    /// The seconds a hex actually takes are <see cref="CombatTuning.BaseMovementSecondsPerHex"/>
+    /// divided by this, which is why the stat reads the way canon names it — Movement
+    /// <em>Speed</em> — rather than as a timing value with the sense reversed.
+    /// <para>
+    /// A final number, like every other stat here. Whatever produced it — Mounted today, and
+    /// whatever the creator authors later — was resolved before the battle was built. This
+    /// project has never heard of Mounted, and gains nothing by hearing of it.
+    /// </para>
+    /// </remarks>
+    public required double MovementSpeed { get; init; }
 }
 
 /// <summary>

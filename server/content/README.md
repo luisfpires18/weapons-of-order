@@ -89,7 +89,9 @@ Unit row under its own key, separately from the definition key, so:
   weapon proficiency restrictions and no Unit is inherently ranged, so a Unit reaches as far as what
   it is holding. **Movement Speed** is derived from `Mounted`, because canon's one inherent movement
   distinction for v1 is that Mounted Units are slightly faster, and authoring a speed per Unit would
-  quietly create the extra movement tiers it says not to invent.
+  quietly create the extra movement tiers it says not to invent. The API turns the flag into the
+  canonical stat using `Combat:MovementSpeed`, so a Unit's final Movement Speed is retuned there
+  rather than by editing content.
 - **Armour items.** `MaxArmor` is a Unit's structural limit and is published by the API, but no
   armour item content exists yet and none is invented here. Defense therefore comes entirely from a
   Unit's own `Combat.Defense`, which is why it is small.

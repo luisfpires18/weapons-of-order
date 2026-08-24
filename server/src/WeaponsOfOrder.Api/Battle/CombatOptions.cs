@@ -24,12 +24,31 @@ internal sealed class CombatOptions
     /// <summary>What each weapon weight is worth in Attack Interval seconds.</summary>
     public WeaponWeightSettings WeightIntervalSeconds { get; set; } = new();
 
+    /// <summary>What a Unit's Mounted state is worth as a Movement Speed.</summary>
+    public MovementSpeedSettings MovementSpeed { get; set; } = new();
+
     public UnarmedSettings Unarmed { get; set; } = new();
 
     public TrainingOpponentSettings TrainingOpponent { get; set; } = new();
 
     /// <summary>The settings above as the simulator's own tuning record.</summary>
     public CombatTuning ToTuning() => Tuning.ToTuning();
+
+    /// <summary>
+    /// The Movement Speed a Unit in this state fights with.
+    /// </summary>
+    /// <remarks>
+    /// The whole of the Mounted-to-Movement-Speed translation, and the only place it happens. The
+    /// simulator is handed the number that comes out of here and never learns what produced it,
+    /// which is what lets the creator later author speed some other way — per Unit, per tier, per
+    /// anything — by changing this method and nothing below it.
+    /// <para>
+    /// Canon's one inherent movement distinction for v1 is that Mounted Units are slightly faster.
+    /// There are deliberately no other tiers and no equipment movement modifiers.
+    /// </para>
+    /// </remarks>
+    public double MovementSpeedFor(bool mounted)
+        => mounted ? MovementSpeed.Mounted : MovementSpeed.Foot;
 
     /// <summary>The Attack Interval a weapon of this weight adds. Negative makes the loadout faster.</summary>
     public double IntervalFor(WeaponWeight weight) => weight switch
@@ -67,9 +86,7 @@ internal sealed class CombatTuningSettings
 
     public int TickMilliseconds { get; set; } = CombatTuning.Default.TickMilliseconds;
 
-    public double FootMovementSecondsPerHex { get; set; } = CombatTuning.Default.FootMovementSecondsPerHex;
-
-    public double MountedMovementSecondsPerHex { get; set; } = CombatTuning.Default.MountedMovementSecondsPerHex;
+    public double BaseMovementSecondsPerHex { get; set; } = CombatTuning.Default.BaseMovementSecondsPerHex;
 
     public double MinimumAttackIntervalSeconds { get; set; } = CombatTuning.Default.MinimumAttackIntervalSeconds;
 
@@ -96,8 +113,7 @@ internal sealed class CombatTuningSettings
         MaximumEnergy = MaximumEnergy,
         EnergyPerAttack = EnergyPerAttack,
         TickMilliseconds = TickMilliseconds,
-        FootMovementSecondsPerHex = FootMovementSecondsPerHex,
-        MountedMovementSecondsPerHex = MountedMovementSecondsPerHex,
+        BaseMovementSecondsPerHex = BaseMovementSecondsPerHex,
         MinimumAttackIntervalSeconds = MinimumAttackIntervalSeconds,
         ActiveLimit = ActiveLimit,
         ReserveLimit = ReserveLimit,
@@ -125,6 +141,27 @@ internal sealed class WeaponWeightSettings
     public double Medium { get; set; }
 
     public double Heavy { get; set; } = 0.3;
+}
+
+/// <summary>
+/// The Movement Speed each Unit state resolves to.
+/// </summary>
+/// <remarks>
+/// <strong>Temporary prototype values, not canon.</strong> Canon says a Mounted Unit is slightly
+/// faster than one on foot and leaves the amount as tuning.
+/// <para>
+/// A multiple of standard movement rather than a duration, because that is the sense canon gives
+/// the stat: higher is faster. The seconds a hex takes are
+/// <c>Combat:Tuning:BaseMovementSecondsPerHex</c> divided by it.
+/// </para>
+/// </remarks>
+internal sealed class MovementSpeedSettings
+{
+    /// <summary>Standard movement. The scale everything else is a multiple of.</summary>
+    public double Foot { get; set; } = 1.0;
+
+    /// <summary>Above <see cref="Foot"/>, because canon says Mounted is faster.</summary>
+    public double Mounted { get; set; } = 1.4;
 }
 
 /// <summary>
@@ -198,9 +235,18 @@ internal sealed class TrainingCombatantSettings
 
     public int Range { get; set; } = 1;
 
+    /// <summary>
+    /// Whether this combatant is mounted, translated through the same configured mapping a Unit's
+    /// is.
+    /// </summary>
+    /// <remarks>
+    /// Authored as the state rather than as a speed so that retuning what Mounted is worth moves
+    /// the opposition with the player's own Units. It is still translated here, in the API, and
+    /// the simulator receives only the number.
+    /// </remarks>
     public bool Mounted { get; set; }
 
-    public CombatantStats ToStats() => new()
+    public CombatantStats ToStats(double movementSpeed) => new()
     {
         Hp = Hp,
         Power = Power,
@@ -208,6 +254,6 @@ internal sealed class TrainingCombatantSettings
         AttackIntervalSeconds = AttackIntervalSeconds,
         CriticalChance = CriticalChance,
         Range = Range,
-        Mounted = Mounted,
+        MovementSpeed = movementSpeed,
     };
 }

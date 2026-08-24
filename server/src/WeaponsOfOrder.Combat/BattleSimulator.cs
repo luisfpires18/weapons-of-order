@@ -553,7 +553,7 @@ internal sealed class Simulation
             ReserveOrder = reserveOrder,
             ReserveEntryHex = reserveOrder is { } queue ? _field.ReserveEntryHex(side, queue) : null,
             AttackIntervalMilliseconds = _tuning.AttackIntervalMilliseconds(input.Stats.AttackIntervalSeconds),
-            MovementIntervalMilliseconds = _tuning.MovementIntervalMilliseconds(input.Stats.Mounted),
+            MovementIntervalMilliseconds = _tuning.MovementIntervalMilliseconds(input.Stats.MovementSpeed),
             Hp = input.Stats.Hp,
 
             // Both ready at the opening bell. A Unit's first attack has no wind-up and its first
@@ -634,6 +634,14 @@ internal sealed class Simulation
                     throw new InvalidBattleInputException(
                         $"'{combatant.Name}' has an Attack Interval of zero, which is not a fast Unit "
                         + "but a broken clock.");
+                }
+
+                if (combatant.Stats.MovementSpeed <= 0)
+                {
+                    throw new InvalidBattleInputException(
+                        $"'{combatant.Name}' has a Movement Speed of {combatant.Stats.MovementSpeed}. "
+                        + "It is a multiple of standard movement and must be greater than zero; a Unit "
+                        + "that cannot move is one that never closes the distance.");
                 }
             }
         }

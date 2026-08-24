@@ -158,7 +158,7 @@ describe("a reserve that never entered", () => {
           attackIntervalSeconds: 1,
           criticalChance: 0,
           range: 1,
-          mounted: true,
+          movementSpeed: 1.4,
         },
         reserveOrder: 0,
         reserveEntryHex: { column: 0, row: 0 },

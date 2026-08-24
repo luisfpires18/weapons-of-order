@@ -122,4 +122,24 @@ public class BattleInputValidationTests
 
         Assert.Contains("broken clock", Refused(Fight.Between(player, Ordinary("opponent", new Hex(4, 3)))).Message);
     }
+
+    /// <summary>
+    /// Movement Speed divides the base duration, so zero and negative have no meaning.
+    /// </summary>
+    /// <remarks>
+    /// Refused rather than turned into an infinite or backwards step. A Unit that cannot move is
+    /// not a slow Unit, and the caller resolved this number — so it is a caller's bug.
+    /// </remarks>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void A_Unit_that_cannot_move_is_refused(double movementSpeed)
+    {
+        var player = new ArmyUnderTest("player")
+            .Deploy("rooted", new Hex(3, 3), Fight.Stats(movementSpeed: movementSpeed));
+
+        var refusal = Refused(Fight.Between(player, Ordinary("opponent", new Hex(4, 3))));
+
+        Assert.Contains("Movement Speed", refusal.Message);
+    }
 }

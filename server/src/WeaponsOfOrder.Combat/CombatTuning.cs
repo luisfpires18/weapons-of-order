@@ -61,18 +61,16 @@ public sealed record CombatTuning
     /// </remarks>
     public int TickMilliseconds { get; init; } = 50;
 
-    /// <summary>Movement interval, in seconds per hex, for a Unit on foot.</summary>
-    public double FootMovementSecondsPerHex { get; init; } = 0.6;
-
     /// <summary>
-    /// Movement interval, in seconds per hex, for a Mounted Unit.
+    /// How long one hex takes at a Movement Speed of 1.0, in seconds.
     /// </summary>
     /// <remarks>
-    /// Lower than <see cref="FootMovementSecondsPerHex"/>, because canon's one inherent movement
-    /// distinction for v1 is that Mounted Units are slightly faster. There are deliberately no
-    /// other movement tiers and no equipment movement modifiers.
+    /// The scale a combatant's <see cref="CombatantStats.MovementSpeed"/> is a multiple of. There
+    /// is one of these rather than one per kind of Unit: which Units are faster is the caller's
+    /// answer, and encoding a second duration here would be this project holding an opinion about
+    /// who is riding a horse.
     /// </remarks>
-    public double MountedMovementSecondsPerHex { get; init; } = 0.42;
+    public double BaseMovementSecondsPerHex { get; init; } = 0.6;
 
     /// <summary>
     /// The lowest Attack Interval any loadout can reach, in seconds.
@@ -134,9 +132,14 @@ public sealed record CombatTuning
     public int AttackIntervalMilliseconds(double seconds)
         => ToMilliseconds(Math.Max(seconds, MinimumAttackIntervalSeconds));
 
-    /// <summary>Milliseconds per hex of movement, for a Unit that may or may not be Mounted.</summary>
-    public int MovementIntervalMilliseconds(bool mounted)
-        => ToMilliseconds(mounted ? MountedMovementSecondsPerHex : FootMovementSecondsPerHex);
+    /// <summary>Milliseconds per hex, for a combatant moving at <paramref name="movementSpeed"/>.</summary>
+    /// <remarks>
+    /// Speed divides the base duration, so a higher number is a shorter step. A speed of zero or
+    /// less has no meaning here and is refused when the battle is validated rather than turned
+    /// into an infinite or negative interval.
+    /// </remarks>
+    public int MovementIntervalMilliseconds(double movementSpeed)
+        => ToMilliseconds(BaseMovementSecondsPerHex / movementSpeed);
 
     public int ReserveEntryDelayMilliseconds => ToMilliseconds(ReserveEntryDelaySeconds);
 

@@ -19,6 +19,7 @@ internal sealed class CombatOptionsValidator : IValidateOptions<CombatOptions>
         var failures = new List<string>();
 
         failures.AddRange(TuningFailures(options.Tuning));
+        failures.AddRange(MovementSpeedFailures(options.MovementSpeed));
         failures.AddRange(UnarmedFailures(options.Unarmed));
         failures.AddRange(OpponentFailures(options.TrainingOpponent, options.Tuning));
 
@@ -67,17 +68,11 @@ internal sealed class CombatOptionsValidator : IValidateOptions<CombatOptions>
                 + "is unreachable.";
         }
 
-        if (tuning.FootMovementSecondsPerHex <= 0 || tuning.MountedMovementSecondsPerHex <= 0)
-        {
-            yield return $"{section} movement intervals must be greater than zero seconds per hex.";
-        }
-
-        if (tuning.MountedMovementSecondsPerHex > tuning.FootMovementSecondsPerHex)
+        if (tuning.BaseMovementSecondsPerHex <= 0)
         {
             yield return
-                $"{section} MountedMovementSecondsPerHex is longer than FootMovementSecondsPerHex, which "
-                + "would make Mounted Units slower. Canon's one inherent movement distinction is that "
-                + "they are faster.";
+                $"{section} BaseMovementSecondsPerHex must be greater than zero. It is how long a hex "
+                + "takes at a Movement Speed of 1, and a step of no duration is not a fast Unit.";
         }
 
         if (tuning.MinimumAttackIntervalSeconds <= 0)
@@ -118,6 +113,32 @@ internal sealed class CombatOptionsValidator : IValidateOptions<CombatOptions>
                 $"{section} NoProgressSeconds {tuning.NoProgressSeconds} is longer than "
                 + $"MaximumDurationSeconds {tuning.MaximumDurationSeconds}, so the no-progress window can "
                 + "never fire.";
+        }
+    }
+
+    /// <summary>
+    /// The Mounted-to-Movement-Speed mapping has to describe movement that can happen.
+    /// </summary>
+    /// <remarks>
+    /// A speed of zero or less would divide the base duration into an infinite or negative step,
+    /// and the simulator refuses such a combatant outright — better to say so at startup, naming
+    /// the setting, than to have every battle fail.
+    /// </remarks>
+    private static IEnumerable<string> MovementSpeedFailures(MovementSpeedSettings speeds)
+    {
+        var section = $"'{CombatOptions.SectionName}:{nameof(CombatOptions.MovementSpeed)}'";
+
+        if (speeds.Foot <= 0 || speeds.Mounted <= 0)
+        {
+            yield return
+                $"{section} Foot and Mounted must both be greater than zero. Movement Speed is a "
+                + "multiple of standard movement, not a duration.";
+        }
+        else if (speeds.Mounted < speeds.Foot)
+        {
+            yield return
+                $"{section} Mounted {speeds.Mounted} is slower than Foot {speeds.Foot}. Canon's one "
+                + "inherent movement distinction is that Mounted Units are faster.";
         }
     }
 

@@ -123,7 +123,53 @@ public sealed class SlowMountApiFactory : WeaponsOfOrderApiFactory
 {
     protected override IEnumerable<KeyValuePair<string, string?>> AdditionalConfiguration =>
     [
-        new("Combat:Tuning:MountedMovementSecondsPerHex", "9"),
+        new("Combat:MovementSpeed:Mounted", "0.5"),
+    ];
+}
+
+/// <summary>A Movement Speed of zero, which would divide the base step into nothing.</summary>
+public sealed class MotionlessUnitApiFactory : WeaponsOfOrderApiFactory
+{
+    protected override IEnumerable<KeyValuePair<string, string?>> AdditionalConfiguration =>
+    [
+        new("Combat:MovementSpeed:Foot", "0"),
+    ];
+}
+
+/// <summary>
+/// The Mounted-to-Movement-Speed mapping retuned, and nothing else.
+/// </summary>
+/// <remarks>
+/// Unit content is untouched: the same definitions, the same Mounted flags. What changes is only
+/// what the API decides those flags are worth, which is the whole claim that the translation lives
+/// in this layer.
+/// </remarks>
+public sealed class RetunedMovementApiFactory : PreparationApiFactory
+{
+    public const double Foot = 2.5;
+    public const double Mounted = 5.0;
+
+    protected override IEnumerable<KeyValuePair<string, string?>> AdditionalConfiguration =>
+    [
+        new("Combat:MovementSpeed:Foot", $"{Foot}"),
+        new("Combat:MovementSpeed:Mounted", $"{Mounted}"),
+    ];
+}
+
+/// <summary>
+/// The Mounted flags swapped against the display names.
+/// </summary>
+/// <remarks>
+/// The unit the creator called "Ranged" is made Mounted and the one called "Mounted" is not, so a
+/// resolver reading a display name would get both answers backwards. Nothing in the application
+/// reads a name, and this is what proves it for movement.
+/// </remarks>
+public sealed class MisleadingNameApiFactory : PreparationApiFactory
+{
+    protected override IEnumerable<KeyValuePair<string, string?>> AdditionalConfiguration =>
+    [
+        new("UnitContent:Units:1:Mounted", "true"),
+        new("UnitContent:Units:2:Mounted", "false"),
     ];
 }
 

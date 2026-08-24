@@ -27,6 +27,14 @@ internal sealed class CombatProfiles(IOptionsSnapshot<CombatOptions> options)
 
     public TrainingOpponentSettings TrainingOpponent => _combat.TrainingOpponent;
 
+    /// <summary>The final stats a training combatant fights with, its Mounted state resolved.</summary>
+    /// <remarks>
+    /// Through the same mapping a Unit's goes through, so retuning what Mounted is worth moves the
+    /// opposition with the player's own army rather than leaving it behind.
+    /// </remarks>
+    public CombatantStats StatsFor(TrainingCombatantSettings combatant)
+        => combatant.ToStats(_combat.MovementSpeedFor(combatant.Mounted));
+
     /// <summary>
     /// The final stats for a Unit with these weapons in its hands.
     /// </summary>
@@ -69,9 +77,10 @@ internal sealed class CombatProfiles(IOptionsSnapshot<CombatOptions> options)
 
             Range = Reach(weapons, unarmed.Range),
 
-            // Canon's one inherent movement distinction for v1. The simulator turns it into a
-            // movement interval; nothing else about a Unit changes how fast it walks.
-            Mounted = unit.Mounted,
+            // Resolved here rather than passed along. Mounted is Unit identity; the simulator is
+            // handed a number and never learns what produced it, which is what keeps the boundary
+            // at final combat values.
+            MovementSpeed = _combat.MovementSpeedFor(unit.Mounted),
         };
     }
 

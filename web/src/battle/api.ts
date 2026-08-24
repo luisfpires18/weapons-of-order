@@ -24,10 +24,14 @@ const limitsSchema = z.object({
 });
 
 /**
- * The six universal combat stats, as the server totalled them.
+ * The six universal combat stats plus Range, as the server totalled them.
  *
  * Displayed and never sent. Every number here is the server's answer to what a Unit and its
  * loadout come to, and the browser has no opinion the server would listen to.
+ *
+ * `movementSpeed` is the canonical stat rather than the Mounted state that currently produces it:
+ * a multiple of standard movement, where higher is faster. Whether a unit is Mounted is identity
+ * and sits beside its name on the unit itself.
  */
 const combatStatsSchema = z.object({
   hp: z.number(),
@@ -36,7 +40,7 @@ const combatStatsSchema = z.object({
   attackIntervalSeconds: z.number(),
   criticalChance: z.number(),
   range: z.number(),
-  mounted: z.boolean(),
+  movementSpeed: z.number(),
 });
 
 const armyWeaponSchema = z.object({

@@ -30,7 +30,7 @@ public class DeterminismTests
                 Fight.Stats(hp: 260, power: 7, defense: 12, crit: 0.35, range: index == 0 ? 3 : 1));
 
             player.Reserve($"pr{index}", Fight.Stats(hp: 200, power: 6, crit: 0.35));
-            opponent.Reserve($"or{index}", Fight.Stats(hp: 200, power: 6, crit: 0.35, mounted: index % 2 == 0));
+            opponent.Reserve($"or{index}", Fight.Stats(hp: 200, power: 6, crit: 0.35, movementSpeed: index % 2 == 0 ? 1.4 : 1.0));
         }
 
         return Fight.Between(player, opponent, Fight.Quick(maximumSeconds: 60, noProgressSeconds: 12), seed: seed);

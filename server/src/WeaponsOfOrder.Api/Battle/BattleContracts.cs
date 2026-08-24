@@ -15,10 +15,16 @@ internal sealed record BattlefieldPayload(int Columns, int Rows, int DeploymentC
 /// <summary>How many Units an army may field, hold back, and bring in total.</summary>
 internal sealed record ArmyLimitsPayload(int Active, int Reserve, int Army);
 
-/// <summary>The six universal combat stats, as the server totalled them.</summary>
+/// <summary>The six universal combat stats plus Range, as the server totalled them.</summary>
 /// <remarks>
-/// Read-only, and read-only in both directions: the client displays these and never sends them.
-/// A browser that could name its own Power would be the browser deciding the battle.
+/// Read-only, and read-only in both directions: the client displays these and never sends them. A
+/// browser that could name its own Power would be the browser deciding the battle.
+/// <para>
+/// <paramref name="MovementSpeed"/> is the canonical stat rather than the Mounted state that
+/// currently produces it: a multiple of standard movement, where higher is faster. Whether a Unit
+/// is Mounted is identity and is published beside its name on
+/// <see cref="ArmyUnitPayload.Mounted"/>.
+/// </para>
 /// </remarks>
 internal sealed record CombatStatsPayload(
     int Hp,
@@ -27,7 +33,7 @@ internal sealed record CombatStatsPayload(
     double AttackIntervalSeconds,
     double CriticalChance,
     int Range,
-    bool Mounted);
+    double MovementSpeed);
 
 /// <summary>A weapon in a Unit's hands, named well enough for the deployment screen.</summary>
 internal sealed record ArmyWeaponPayload(Guid ItemId, string Name, string Craftsmanship);

@@ -15,7 +15,12 @@ internal static class Fight
     /// </summary>
     /// <remarks>
     /// A test names only what it is about. Everything unnamed is deliberately plain: melee reach,
-    /// no Defense, no Critical Chance, one attack a second, on foot.
+    /// no Defense, no Critical Chance, one attack a second, standard movement.
+    /// <para>
+    /// <paramref name="movementSpeed"/> is the canonical stat — a multiple of standard movement,
+    /// where higher is faster. There is no Mounted here, and no way to express one: what makes a
+    /// Unit quick was resolved before the battle was built.
+    /// </para>
     /// </remarks>
     public static CombatantStats Stats(
         int hp = 100,
@@ -24,7 +29,7 @@ internal static class Fight
         double interval = 1.0,
         double crit = 0,
         int range = 1,
-        bool mounted = false)
+        double movementSpeed = 1.0)
         => new()
         {
             Hp = hp,
@@ -33,7 +38,7 @@ internal static class Fight
             AttackIntervalSeconds = interval,
             CriticalChance = crit,
             Range = range,
-            Mounted = mounted,
+            MovementSpeed = movementSpeed,
         };
 
     /// <summary>Tuning with guards short enough that a stalemate test finishes in milliseconds.</summary>

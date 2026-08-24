@@ -87,18 +87,45 @@ public class MovementTests
     }
 
     /// <summary>
-    /// A Mounted Unit covers the same ground sooner.
+    /// A Movement Speed of 1 takes the tuning's base duration to cross a hex.
     /// </summary>
     /// <remarks>
-    /// Canon's one inherent movement distinction for v1. Two otherwise identical Units start the
-    /// same distance out, so the only thing that can separate their arrival is the mount.
+    /// The scale everything else is a multiple of, pinned to the number rather than to a Unit that
+    /// happens to be on foot. Steps land on the clock's grid, so the assertion is against the first
+    /// tick at or after the interval rather than against the interval itself.
     /// </remarks>
     [Fact]
-    public void A_Mounted_Unit_takes_its_steps_sooner()
+    public void Standard_Movement_Speed_steps_at_the_base_interval()
+    {
+        var tuning = Fight.Quick() with { BaseMovementSecondsPerHex = 0.6, TickMilliseconds = 50 };
+
+        var player = new ArmyUnderTest("player")
+            .Deploy("walker", new Hex(0, 3), Fight.Stats(hp: 10_000, power: 1, movementSpeed: 1.0));
+
+        var opponent = new ArmyUnderTest("opponent")
+            .Deploy("anchor", new Hex(7, 3), Fight.Stats(hp: 10_000, power: 1, range: 7));
+
+        var result = BattleSimulator.Simulate(Fight.Between(player, opponent, tuning));
+        var steps = result.MovesBy("walker").Select(move => move.TimeMilliseconds).Take(3).ToList();
+
+        // Ready at the opening bell, then every 600ms on a 50ms grid.
+        Assert.Equal([0, 600, 1200], steps);
+    }
+
+    /// <summary>
+    /// A higher Movement Speed crosses the same ground sooner.
+    /// </summary>
+    /// <remarks>
+    /// The stat, not the state. Two otherwise identical Units start the same distance out, and the
+    /// only thing separating their arrival is a number the caller resolved before the battle — the
+    /// simulator has no idea one of them is on a horse, and cannot be told.
+    /// </remarks>
+    [Fact]
+    public void A_faster_Unit_takes_its_steps_sooner()
     {
         var player = new ArmyUnderTest("player")
-            .Deploy("rider", new Hex(0, 1), Fight.Stats(hp: 10_000, power: 1, mounted: true))
-            .Deploy("walker", new Hex(0, 5), Fight.Stats(hp: 10_000, power: 1));
+            .Deploy("quick", new Hex(0, 1), Fight.Stats(hp: 10_000, power: 1, movementSpeed: 1.4))
+            .Deploy("standard", new Hex(0, 5), Fight.Stats(hp: 10_000, power: 1, movementSpeed: 1.0));
 
         var opponent = new ArmyUnderTest("opponent")
             .Deploy("mark-a", new Hex(7, 1), Fight.Stats(hp: 10_000, power: 1, range: 7))
@@ -109,13 +136,30 @@ public class MovementTests
         BattleInvariants.AssertConsistent(result);
 
         // The second step, not the first: both are ready to move the instant the battle starts, so
-        // the mount only shows once an interval has had to pass.
-        var rider = result.MovesBy("rider").Skip(1).First().TimeMilliseconds;
-        var walker = result.MovesBy("walker").Skip(1).First().TimeMilliseconds;
+        // the speed only shows once an interval has had to pass.
+        var quick = result.MovesBy("quick").Skip(1).First().TimeMilliseconds;
+        var standard = result.MovesBy("standard").Skip(1).First().TimeMilliseconds;
 
-        Assert.Equal(0, result.MovesBy("rider").First().TimeMilliseconds);
-        Assert.Equal(0, result.MovesBy("walker").First().TimeMilliseconds);
-        Assert.True(rider < walker, $"The rider stepped again at {rider} and the Unit on foot at {walker}.");
+        Assert.Equal(0, result.MovesBy("quick").First().TimeMilliseconds);
+        Assert.Equal(0, result.MovesBy("standard").First().TimeMilliseconds);
+        Assert.True(quick < standard, $"The quicker Unit stepped again at {quick} and the standard one at {standard}.");
+    }
+
+    /// <summary>
+    /// Halving the speed doubles the step, because speed divides the base duration.
+    /// </summary>
+    /// <remarks>
+    /// What makes the stat Movement <em>Speed</em> rather than a timing value with its sense
+    /// reversed: bigger is faster, and the relationship is the one the name implies.
+    /// </remarks>
+    [Fact]
+    public void Movement_Speed_divides_the_base_duration()
+    {
+        var tuning = Fight.Quick() with { BaseMovementSecondsPerHex = 0.6, TickMilliseconds = 10 };
+
+        Assert.Equal(600, tuning.MovementIntervalMilliseconds(1.0));
+        Assert.Equal(300, tuning.MovementIntervalMilliseconds(2.0));
+        Assert.Equal(1_200, tuning.MovementIntervalMilliseconds(0.5));
     }
 
     /// <summary>

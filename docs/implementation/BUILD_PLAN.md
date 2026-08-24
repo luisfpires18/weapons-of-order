@@ -391,7 +391,7 @@ At this point we have enough actual game to judge whether Forge -> equipment -> 
   references at all: no ASP.NET, no EF Core, no Npgsql, no Identity, no HTTP. It takes a
   `BattleInput` and returns a `BattleResult` with a complete event log, and reads nothing else —
   no clock, no ambient randomness. The same input replays event for event.
-- the locked battlefield: an 8x7 offset hex grid, a 4x7 deployment half per side, one Unit per
+- the locked battlefield: an offset hex grid of 8 columns x 7 rows, a half of 4 columns x 7 rows per side, one Unit per
   hex, occupied hexes impassable, and body blocking as a real consequence.
 - the locked v1 combat rules: the Power -> coefficient -> critical -> Defense -> round -> minimum
   pipeline, the single 0-100 Energy bar with a Heavy attack at full, nearest-then-least-armoured

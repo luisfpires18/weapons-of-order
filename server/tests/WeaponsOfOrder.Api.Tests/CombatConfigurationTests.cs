@@ -19,7 +19,11 @@ public sealed class CombatConfigurationTests
 
     [Fact]
     public void A_Mounted_Unit_slower_than_one_on_foot_is_rejected()
-        => AssertRefusesToStart<SlowMountApiFactory>("MountedMovementSecondsPerHex");
+        => AssertRefusesToStart<SlowMountApiFactory>("Mounted 0.5 is slower than Foot 1");
+
+    [Fact]
+    public void A_Movement_Speed_of_zero_is_rejected()
+        => AssertRefusesToStart<MotionlessUnitApiFactory>("multiple of standard movement");
 
     [Fact]
     public void Training_opposition_standing_in_the_player_half_is_rejected()

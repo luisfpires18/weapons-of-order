@@ -87,14 +87,14 @@ internal sealed class BattleService(ArmyService army, CombatProfiles profiles)
             opponent.Name,
             [
                 .. opponent.Active.Select(combatant => new DeployedCombatantInput(
-                    new BattleCombatantInput(string.Empty, combatant.Name, combatant.ToStats()),
+                    new BattleCombatantInput(string.Empty, combatant.Name, profiles.StatsFor(combatant)),
                     new Hex(combatant.Column, combatant.Row))),
             ],
             [
                 .. opponent.Reserves.Select(combatant => new BattleCombatantInput(
                     string.Empty,
                     combatant.Name,
-                    combatant.ToStats())),
+                    profiles.StatsFor(combatant))),
             ]);
     }
 
@@ -122,7 +122,7 @@ internal sealed class BattleService(ArmyService army, CombatProfiles profiles)
             combatant.Stats.AttackIntervalSeconds,
             combatant.Stats.CriticalChance,
             combatant.Stats.Range,
-            combatant.Stats.Mounted),
+            combatant.Stats.MovementSpeed),
         combatant.ReserveOrder,
         ToPayload(combatant.ReserveEntryHex),
         Lowercase(combatant.EndState),

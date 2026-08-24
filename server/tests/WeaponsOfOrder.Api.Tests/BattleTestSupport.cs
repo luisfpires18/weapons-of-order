@@ -13,7 +13,7 @@ public sealed record CombatStatsView(
     double AttackIntervalSeconds,
     double CriticalChance,
     int Range,
-    bool Mounted);
+    double MovementSpeed);
 
 public sealed record ArmyWeaponView(Guid ItemId, string Name, string Craftsmanship);
 
