@@ -13,6 +13,12 @@
     "meaning, and 'Melee'/'Ranged'/'Mounted' are identity labels only: canon allows any Unit to",
     "equip any compatible weapon, and nothing in the application reads a display name.",
     "",
+    "TEMPORARY PROTOTYPE VALUES, NOT CANON: every number under 'Combat' as well. Canon fixes",
+    "the six universal stats and leaves every budget as balance work, so these exist to make",
+    "Task 6's battle prototype playable and are expected to be replaced by a real balance pass.",
+    "Attack range is NOT here: it comes from the equipped weapon, and movement speed is not",
+    "here either, because canon's only inherent movement distinction is 'Mounted'.",
+    "",
     "See content/README.md."
   ],
   "UnitContent": {
@@ -26,7 +32,14 @@
         "Tier": 1,
         "MaxArmor": "Heavy",
         "Mounted": false,
-        "Starter": true
+        "Starter": true,
+        "Combat": {
+          "Hp": 240,
+          "Power": 9,
+          "Defense": 8,
+          "AttackIntervalSeconds": 1.5,
+          "CriticalChance": 0.08
+        }
       },
       {
         "Key": "arkazia.ranged",
@@ -36,7 +49,14 @@
         "Tier": 1,
         "MaxArmor": "Heavy",
         "Mounted": false,
-        "Starter": true
+        "Starter": true,
+        "Combat": {
+          "Hp": 180,
+          "Power": 8,
+          "Defense": 4,
+          "AttackIntervalSeconds": 1.7,
+          "CriticalChance": 0.12
+        }
       },
       {
         "Key": "arkazia.mounted",
@@ -46,7 +66,14 @@
         "Tier": 1,
         "MaxArmor": "Heavy",
         "Mounted": true,
-        "Starter": true
+        "Starter": true,
+        "Combat": {
+          "Hp": 220,
+          "Power": 10,
+          "Defense": 6,
+          "AttackIntervalSeconds": 1.6,
+          "CriticalChance": 0.08
+        }
       }
     ]
   }

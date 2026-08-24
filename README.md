@@ -9,17 +9,21 @@ the source-of-truth order. This file covers only how to run and validate the cod
 
 ```text
 web/                                  React + TypeScript + Vite client
+  src/battle/                         Deployment, playback, and the PixiJS battlefield
 server/
   content/                            Creator-editable game content — see its README
   src/WeaponsOfOrder.Api/             ASP.NET Core host, endpoints, configuration
     Auth/                             Accounts, sessions, account notifications
+    Battle/                           Army deployment, combat stats, the battle API
     Content/                          Loading and validating server/content
     Forge/                            Ordinary forging: rules, balance data, endpoints
     Preparation/                      Inventory, Units and weapon loadouts
     Security/                         Antiforgery and authorization conventions
+  src/WeaponsOfOrder.Combat/          The deterministic combat simulator — no dependencies
   src/WeaponsOfOrder.Infrastructure/  EF Core / PostgreSQL persistence and migrations
     Gameplay/                         Player-owned game entities
   tests/WeaponsOfOrder.Api.Tests/     API, account and configuration tests
+  tests/WeaponsOfOrder.Combat.Tests/  Combat rules, against no host and no database
 art/                                  Shared art, aliased into the client as @art
 docker-compose.yml                    Local development PostgreSQL
 ```
@@ -74,6 +78,19 @@ pnpm --dir web dev
 - Client: <http://localhost:1337>
 - API: <http://localhost:5180>
 - Health seam: <http://localhost:1337/api/health>
+
+### The combat simulator
+
+`server/src/WeaponsOfOrder.Combat` has no `PackageReference` and no `ProjectReference`, and that
+emptiness is the point: no ASP.NET, no EF Core, no Npgsql, no Identity, no HTTP, nothing that knows
+a browser exists. It takes a `BattleInput` and returns a `BattleResult` with a complete event log,
+and reads nothing else — no clock, no ambient randomness. The same input replays event for event.
+
+Its tests run against it alone:
+
+```bash
+dotnet test server/tests/WeaponsOfOrder.Combat.Tests
+```
 
 Vite proxies `/api` to the API, so the browser stays on **one origin** in development —
 the same topology as deployment, where ASP.NET Core serves the built client from

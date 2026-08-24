@@ -322,6 +322,7 @@ describe("navigation", () => {
       "Forge",
       "Inventory",
       "Units",
+      "Battle",
       "Account",
     ]);
   });

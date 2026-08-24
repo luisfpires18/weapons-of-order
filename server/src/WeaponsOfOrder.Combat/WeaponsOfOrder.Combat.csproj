@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>WeaponsOfOrder.Combat</RootNamespace>
+  </PropertyGroup>
+
+  <!--
+    Deliberately no PackageReference and no ProjectReference.
+
+    This is the deterministic combat simulator, and the emptiness below is the boundary: no
+    ASP.NET Core, no EF Core, no Npgsql, no Identity, no HTTP and nothing that knows a browser
+    exists. It takes a BattleInput and returns a BattleResult. Anything it cannot compute from
+    that input is an input it is missing, not a dependency it should acquire.
+  -->
+
+</Project>

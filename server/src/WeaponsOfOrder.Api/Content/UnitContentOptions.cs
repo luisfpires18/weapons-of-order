@@ -63,6 +63,48 @@ internal sealed class UnitDefinitionSettings
 
     /// <summary>Grant every account exactly one of these, once. Absent means no.</summary>
     public string? Starter { get; set; }
+
+    /// <summary>The Unit's base combat stats. Required: a Unit with none cannot be fielded.</summary>
+    public UnitCombatSettings? Combat { get; set; }
+}
+
+/// <summary>
+/// A Unit's own contribution to its final combat stats.
+/// </summary>
+/// <remarks>
+/// <strong>Temporary prototype values, not canon.</strong> Canon fixes the six universal stats
+/// and says in as many words that the budgets are balance work. These exist so the battle
+/// prototype can be played.
+/// <para>
+/// Two of the six are deliberately absent. <b>Range</b> belongs to the equipped weapon — there
+/// are no weapon proficiency restrictions and no Unit is inherently ranged, so a Unit reaches as
+/// far as what it is holding. <b>Movement Speed</b> is derived from
+/// <see cref="UnitDefinitionSettings.Mounted"/>, because canon's one inherent movement
+/// distinction for v1 is that Mounted Units are slightly faster, and authoring a speed per Unit
+/// would quietly create the extra movement tiers it says not to invent.
+/// </para>
+/// </remarks>
+internal sealed class UnitCombatSettings
+{
+    public int Hp { get; set; }
+
+    /// <summary>The single offensive scaling stat. Never split into attack and special power.</summary>
+    public int Power { get; set; }
+
+    /// <summary>
+    /// The single mitigation stat.
+    /// </summary>
+    /// <remarks>
+    /// Canon says Defense is hard to obtain and comes heavily from armour. No armour exists yet,
+    /// so what a Unit has here is all it has.
+    /// </remarks>
+    public int Defense { get; set; }
+
+    /// <summary>Base seconds between auto attacks, before the equipped weapons' weight is added.</summary>
+    public double AttackIntervalSeconds { get; set; }
+
+    /// <summary>Base chance to crit, from 0 to 1, before equipment adds to it.</summary>
+    public double CriticalChance { get; set; }
 }
 
 /// <summary>

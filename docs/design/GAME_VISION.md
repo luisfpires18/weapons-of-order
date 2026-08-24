@@ -16,7 +16,7 @@ Combat is an **autobattler**.
 
 The player prepares Units, Heroes, weapons, armor, positioning, and reserves before combat. Once battle begins, there are no equipment changes or manual casts that alter the outcome.
 
-The tactical battlefield uses an **8x7 offset hex grid** with freeform deployment in each player's 4x7 half. The current v1 target is 8 active Units from a 16-Unit battle army, with ordered reserves entering from assigned rear-row entry points as active slots open.
+The tactical battlefield uses an **offset hex grid of 8 columns x 7 rows** with freeform deployment in each player's half of 4 columns x 7 rows. The current v1 target is 8 active Units from a 16-Unit battle army, with ordered reserves entering from assigned rear-column entry points as active slots open.
 
 Units body-block one another and path hex-by-hex. Default targeting is the nearest valid enemy, with melee requiring a reachable adjacent attack position. Mounted Units are slightly faster than non-Mounted Units for now.
 

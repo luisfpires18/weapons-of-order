@@ -320,6 +320,57 @@ Units:
   armour limit, and Mounted. There is no class, specialisation, level, experience or power
   rating anywhere on the screen, because the creator has not authored any of them.
 
+## Battle screen as implemented
+
+Recorded for the same reason as the sections above: these are Task 6's choices, not new rules.
+
+Navigation reached the sixth destination, which is where this document says the bar should stop
+growing. It now differs by width, and that is the one responsive decision the shell makes in
+JavaScript rather than CSS — rendering both lists and hiding one would put every destination in
+the accessibility tree twice:
+
+- the phone's bar carries World, Forge, Units and Battle, plus **More**, a disclosure holding
+  Inventory and Account. More lights like a destination when the current screen is behind it, so
+  it is never the only thing on the bar not saying where the player is;
+- the desktop column still carries all five game destinations with Account pinned to the end.
+
+Battle is one screen in two states rather than two routes, because they are one decision and its
+consequence: putting a page load between a deployment and its outcome would be the wrong seam.
+
+Deployment:
+- the battlefield is **real buttons, not a canvas**. Deploying is the one part of a battle a player
+  actually does, and ordinary controls are what give it keyboard focus, a name a screen reader can
+  read and a thumb-sized target. PixiJS draws the battle; this is a form;
+- the interaction is tap a unit, tap a hex. There is no drag: it is the worst of the options on a
+  phone and it is not needed on any of them. Tapping an occupied hex picks that unit up rather than
+  displacing whoever is standing there, so no tap can quietly undo a decision;
+- the board is capped at `min(58vh, 30rem)` tall and goes full-bleed below `sm`. A phone constrains
+  the width and a desktop constrains the height; left to fill a wide column the board grows taller
+  than the viewport, and a battlefield you have to scroll to see all of is not one you can plan on.
+  Measured: a hex is 51x44px at 320 wide, 62x54px at 390, and 74x64px at 1440;
+- the player's half is cool and the opposition's is ember — the title screen's two light sources,
+  saying whose ground is whose without a label or a faction colour. The board carries its own dark
+  ground so the shell's ember atmosphere does not wash both halves warm;
+- ember stays the interaction accent rather than becoming a second ground colour. A placeable hex
+  brightens in its own colour and ember is kept for the hex under the pointer and the selected unit;
+- each hex draws at 94% of its cell so the board's ground shows between them. Only the drawing
+  shrinks — the button keeps its full size, so the gap costs nothing to hit;
+- every edit saves as it is made rather than gathering behind a Save button. The army is
+  server-side state, so leaving the screen mid-deployment must not discard it.
+
+Playback:
+- PixiJS owns the battlefield surface and nothing else. Everything around it is ordinary markup —
+  controls, a live roster of both armies, the result — so a battle stays readable if the canvas
+  never comes up, and stays readable to somebody not looking at it;
+- the canvas is `aria-hidden`. It carries nothing the roster and result do not, so a reader loses
+  nothing by skipping it;
+- the clock lives in the stage rather than in React state. A battle is drawn sixty times a second
+  and a component tree is not something to re-render at that rate; the surrounding interface hears
+  about the frame ten times a second;
+- controls are Play/Pause, Replay and 1x/2x/4x. Not a replay editor;
+- a guard Draw is reported as what it was rather than dressed up as a result, and the survivors are
+  reported as surviving.
+
 ## Things not to decide prematurely
 
 Do not lock yet:

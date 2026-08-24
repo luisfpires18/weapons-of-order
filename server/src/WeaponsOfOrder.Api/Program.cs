@@ -1,5 +1,6 @@
 using WeaponsOfOrder.Api.Auth;
 using WeaponsOfOrder.Api.Auth.Notifications;
+using WeaponsOfOrder.Api.Battle;
 using WeaponsOfOrder.Api.Content;
 using WeaponsOfOrder.Api.Forge;
 using WeaponsOfOrder.Api.Health;
@@ -19,6 +20,7 @@ builder.Services.AddWeaponsOfOrderAuth(builder.Configuration, builder.Environmen
 builder.Services.AddWeaponsOfOrderGameContent(builder.Configuration);
 builder.Services.AddWeaponsOfOrderForge(builder.Configuration);
 builder.Services.AddWeaponsOfOrderPreparation();
+builder.Services.AddWeaponsOfOrderBattle(builder.Configuration);
 
 builder.Services
     .AddHealthChecks()
@@ -47,6 +49,7 @@ app.MapWeaponsOfOrderHealthChecks();
 app.MapWeaponsOfOrderAuth();
 app.MapWeaponsOfOrderForge();
 app.MapWeaponsOfOrderPreparation();
+app.MapWeaponsOfOrderBattle();
 
 if (app.Environment.IsDevelopment())
 {

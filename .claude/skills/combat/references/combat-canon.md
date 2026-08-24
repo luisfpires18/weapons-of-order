@@ -20,13 +20,16 @@ The battle is one continuous fight rather than TFT-style planning rounds.
 The battlefield uses an **offset hexagonal grid**.
 
 Dimensions:
-- 8 rows
-- 7 columns
+- 8 columns
+- 7 rows
 - 56 total hexes
 
 Each player controls one half for deployment:
-- 4 rows x 7 columns
+- 4 columns x 7 rows
 - 28 deployment hexes per side
+
+The two armies face each other across the **column** axis, so a player's half is a range of
+columns and closing the distance means changing column.
 
 Deployment is freeform within the player's own deployment half.
 
@@ -343,7 +346,7 @@ They may later exist as equipment, shield, class, Rune, buff/debuff, or attack-s
 
 Reserves are prepared before battle in an ordered queue.
 
-Each reserve also has a preferred entry hex on the player's rear row.
+Each reserve also has a preferred entry hex on the player's rear column.
 
 When active Unit count falls below the Deployment Limit, reinforcement opportunities open.
 
@@ -358,7 +361,7 @@ Concept:
 
 ### Entry hex
 
-The reserve attempts to enter through its assigned preferred rear-row hex.
+The reserve attempts to enter through its assigned preferred rear-column hex.
 
 If that hex is free:
 - reserve enters there
@@ -383,7 +386,7 @@ This is intentional strategic uncertainty.
 
 A reserve never spawns at the hex where the dead Unit fell.
 
-All reinforcements enter from their assigned rear-row entry point and move normally from there.
+All reinforcements enter from their assigned rear-column entry point and move normally from there.
 
 This makes Mounted reinforcement speed meaningful.
 

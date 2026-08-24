@@ -54,6 +54,7 @@ describe("authenticated shell", () => {
       "Forge",
       "Inventory",
       "Units",
+      "Battle",
       "Account",
     ]);
   });
@@ -154,5 +155,72 @@ describe("account menu", () => {
 
     expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
     expect(document.activeElement).toBe(trigger);
+  });
+});
+
+/**
+ * The phone's navigation.
+ *
+ * Which destinations the bar carries is the one responsive decision the shell makes in
+ * JavaScript, so it is the one that needs a stubbed viewport to test. Everything else about the
+ * layout is CSS and belongs to the browser sweep.
+ */
+describe("navigation on a narrow viewport", () => {
+  function narrow() {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+  }
+
+  it("carries four destinations and a way to the rest", async () => {
+    narrow();
+    renderApp(SIGNED_IN);
+
+    const nav = await screen.findByRole("navigation", { name: "Primary" });
+
+    expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual([
+      "World",
+      "Forge",
+      "Units",
+      "Battle",
+    ]);
+    expect(within(nav).getByRole("button", { name: "More" })).toBeTruthy();
+  });
+
+  it("opens More onto the destinations that did not fit, and closes on Escape", async () => {
+    narrow();
+    renderApp(SIGNED_IN);
+    const user = userEvent.setup();
+
+    const nav = await screen.findByRole("navigation", { name: "Primary" });
+    const more = within(nav).getByRole("button", { name: "More" });
+
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    await user.click(more);
+
+    expect(more.getAttribute("aria-expanded")).toBe("true");
+    expect(within(nav).getByRole("link", { name: "Inventory" })).toBeTruthy();
+    expect(within(nav).getByRole("link", { name: "Account" })).toBeTruthy();
+
+    await user.keyboard("{Escape}");
+
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    expect(within(nav).queryByRole("link", { name: "Inventory" })).toBeNull();
+  });
+
+  it("marks More itself when the player is on a screen behind it", async () => {
+    narrow();
+    renderApp(SIGNED_IN, { at: "/account" });
+
+    const nav = await screen.findByRole("navigation", { name: "Primary" });
+
+    await waitFor(() =>
+      expect(within(nav).getByRole("button", { name: "More" }).getAttribute("aria-current")).toBe(
+        "page",
+      ),
+    );
   });
 });

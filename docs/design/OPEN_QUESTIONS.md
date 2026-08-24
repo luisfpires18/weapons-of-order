@@ -63,6 +63,39 @@ Still unresolved but not required before the first combat prototype:
 - exact reinforcement entry delay;
 - exact progressive event-delivery/network protocol for competitive multiplayer.
 
+Task 6 gave the first three of those configured starting values rather than resolving them. They
+live under `Combat:Tuning` in the API's `appsettings.json` and are tuning, not canon.
+
+### Prototype implementation details, not canon
+
+Task 6 also had to answer four things canon does not speak to. Each is the smallest deterministic
+choice that made the rule above it implementable, each is configurable or trivially replaceable,
+and none of them is a decision the creator has made:
+
+- **the combat clock is stepped, not continuous.** Canon requires an authoritative clock on which
+  same-timestamp attacks resolve as one batch, and says nothing about its shape. The simulator
+  advances in fixed whole milliseconds (`Combat:Tuning:TickMilliseconds`), which is what makes "the
+  same timestamp" an exact answer rather than a floating-point comparison. Attack and movement
+  intervals are therefore effectively rounded up to that grid;
+- **which rear hex a reserve is assigned.** Canon says each reserve has a preferred rear-column
+  entry hex and leaves the choice unauthored. The simulator walks that column from the top by queue
+  position, wrapping if there are more reserves than rows. The obvious real answer is the player
+  choosing one during deployment; that replaces one method and nothing else;
+- **the reach of a loadout holding two weapons of different range.** The registry authors range per
+  weapon and is silent on the combination, because no such loadout exists yet. The longer wins;
+- **what an empty-handed Unit fights with.** Canon does not define it. `Combat:Unarmed` adds no
+  Power and reaches one hex, which keeps a battle legal without inventing an unarmed class ability;
+  the minimum-damage floor means such a Unit still chips.
+
+**Movement Speed is expressed as a scalar**, where 1.0 is standard movement and higher is faster,
+and the seconds a hex takes are `Combat:Tuning:BaseMovementSecondsPerHex` divided by it. That is the
+sense canon gives the stat, and it is what lets `Mounted` be translated into a number in the API
+rather than travelling into the simulator as a flag. Which Units are faster stays canon's question;
+how much faster stays tuning.
+
+A Unit's first attack and first step are also immediate rather than preceded by a wind-up: an
+interval is the time *between* actions. Say so explicitly if that should change.
+
 ## Units and classes
 
 Creator-authored content remains intentionally open:
