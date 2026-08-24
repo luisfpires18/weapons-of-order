@@ -8,6 +8,15 @@
 # Built React client copied into the API for single-origin hosting
 server/src/WeaponsOfOrder.Api/wwwroot/
 
+# Deployment artifacts produced by scripts/publish-artifact.sh
+artifacts/
+
+# The local development SQLite database and any journal beside it. Game data, not source.
+.data/
+*.db
+*.db-wal
+*.db-shm
+
 # Local environment overrides — never commit real credentials
 *.env
 .env.local

@@ -9,7 +9,7 @@ import { BATTLE_URLS } from "@/battle/api";
  * back and can be replayed. It decides nothing the real server decides — no stats, no opponent,
  * no outcome — and the event logs the tests hand it are written by hand for exactly that reason.
  *
- * The real rules are proven against PostgreSQL in the API tests, against nothing at all in the
+ * The real rules are proven against a real database in the API tests, against nothing at all in the
  * simulator's own tests, and against a running stack in the browser sweep.
  */
 

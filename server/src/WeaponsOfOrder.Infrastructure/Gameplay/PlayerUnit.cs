@@ -31,7 +31,7 @@ public sealed class PlayerUnit
     /// </summary>
     /// <remarks>
     /// Unique per account when set. A Unit from a future recruitment path leaves it null, and
-    /// PostgreSQL's index filter excludes those rows, so an account may hold any number of
+    /// The partial index's filter excludes those rows, so an account may hold any number of
     /// copies of the same definition.
     /// </remarks>
     public string? StarterGrantKey { get; set; }

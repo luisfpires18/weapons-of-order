@@ -13,13 +13,15 @@ using Xunit;
 namespace WeaponsOfOrder.Api.Tests;
 
 /// <summary>
-/// Hosts the real API pipeline in memory against a real PostgreSQL database.
+/// Hosts the real API pipeline in memory against a real SQLite database on disk.
 /// </summary>
 /// <remarks>
-/// Accounts are the subject under test, so the store has to be the actual provider:
-/// Identity's normalization, unique indexes and concurrency stamps are not exercised by a
-/// substitute. Start the database with <c>docker compose up -d</c>, or point
-/// <c>WOO_TEST_CONNECTION_STRING</c> somewhere else.
+/// A real file, not an in-memory substitute. Accounts are the subject under test, and
+/// Identity's normalization, its unique indexes, the partial indexes the forge and the army
+/// rely on, and the check constraints are all things only the actual provider enforces.
+/// Nothing has to be installed or started first; the file is created under the temporary
+/// directory and replaced at the start of every run. Point
+/// <c>WOO_TEST_CONNECTION_STRING</c> elsewhere to override it.
 /// <para>
 /// The environment is Production so the tests run against the hardened cookie
 /// configuration, which is why <see cref="CreateAuthClient"/> uses an https base address:
@@ -28,8 +30,22 @@ namespace WeaponsOfOrder.Api.Tests;
 /// </remarks>
 public class WeaponsOfOrderApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private const string DefaultConnectionString =
-        "Host=localhost;Port=5433;Database=weapons_of_order_tests;Username=woo_dev;Password=woo_dev";
+    /// <summary>
+    /// One file for the whole test run, shared by every factory in the process, exactly as
+    /// the PostgreSQL database it replaced was shared. Named after the process so two runs
+    /// on one machine cannot collide.
+    /// </summary>
+    private static readonly string DatabasePath = Path.Combine(
+        Path.GetTempPath(),
+        $"woo-api-tests-{Environment.ProcessId}",
+        "weapons-of-order.db");
+
+    /// <summary>
+    /// Default Timeout is the busy timeout: several test classes run in parallel against one
+    /// file, and a writer that arrives during another write should wait rather than fail.
+    /// </summary>
+    private static readonly string DefaultConnectionString =
+        $"Data Source={DatabasePath};Default Timeout=30";
 
     private static readonly SemaphoreSlim MigrationGate = new(1, 1);
 
@@ -41,7 +57,7 @@ public class WeaponsOfOrderApiFactory : WebApplicationFactory<Program>, IAsyncLi
         // is built, which is after Program's top-level statements have already read
         // builder.Configuration. The connection string is read there, so an environment
         // variable is the seam that lands in time. Settings resolved later through
-        // IOptions — everything under "Auth" — can use ConfigurationOverrides instead.
+        // IOptions — everything under "Auth" and "Database" — can use ConfigurationOverrides.
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", Environments.Production);
         Environment.SetEnvironmentVariable(
             "ConnectionStrings__WeaponsOfOrder",
@@ -76,9 +92,31 @@ public class WeaponsOfOrderApiFactory : WebApplicationFactory<Program>, IAsyncLi
                 return;
             }
 
+            // Every run starts from nothing, so a test can never pass because of a row an
+            // earlier run left behind. The whole directory goes rather than the one file:
+            // SQLite leaves a journal beside it, and a stale one would be replayed into the
+            // new database.
+            var directory = Path.GetDirectoryName(DatabasePath)!;
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+
+            Directory.CreateDirectory(directory);
+
             using var scope = Services.CreateScope();
             var database = scope.ServiceProvider.GetRequiredService<WeaponsOfOrderDbContext>().Database;
             await database.MigrateAsync(TestContext.Current.CancellationToken);
+
+            // The same journal mode staging runs. EF Core creates a SQLite database in WAL,
+            // which staging cannot use because its file is on a network share, so the tests
+            // would otherwise be exercising a mode the deployed game never has. The busy
+            // timeout in the connection string is what lets parallel test classes share this
+            // one file without it.
+            await database.ExecuteSqlRawAsync(
+                "PRAGMA journal_mode=DELETE;",
+                TestContext.Current.CancellationToken);
+
             _migrated = true;
         }
         finally

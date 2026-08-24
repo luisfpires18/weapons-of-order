@@ -13,7 +13,7 @@ public class PreparationApiFactory : ForgeApiFactory;
 /// One display name changed and nothing else, to prove the Unit catalogue is content.
 /// </summary>
 /// <remarks>
-/// The same PostgreSQL database as every other factory here, so a unit granted under the
+/// The same SQLite database as every other factory here, so a unit granted under the
 /// authored name can be read back under this one. That is the whole claim: the persistent row
 /// is an instance of a definition, not a copy of it, and renaming needs no migration.
 /// </remarks>

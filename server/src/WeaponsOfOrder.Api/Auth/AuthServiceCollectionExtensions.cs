@@ -30,14 +30,14 @@ internal static class AuthServiceCollectionExtensions
             // rather than on somebody's first password reset.
             .ValidateOnStart();
 
-        services.AddSingleton<IValidateOptions<AuthOptions>, AuthOptionsValidator>();
+        services.AddSingleton<IValidateOptions<AuthOptions>>(new AuthOptionsValidator(environment));
         services.AddSingleton<AccountLinkFactory>();
 
         AddIdentity(services);
         AddSessionCookie(services, environment);
         AddAntiforgery(services, environment);
         AddRateLimiting(services);
-        AddNotificationDelivery(services, environment);
+        AddNotificationDelivery(services, configuration, environment);
 
         return services;
     }
@@ -201,8 +201,17 @@ internal static class AuthServiceCollectionExtensions
                 });
         };
 
-    private static void AddNotificationDelivery(IServiceCollection services, IWebHostEnvironment environment)
+    private static void AddNotificationDelivery(
+        IServiceCollection services,
+        IConfiguration configuration,
+        IWebHostEnvironment environment)
     {
+        services.AddOptions<EmailOptions>()
+            .Bind(configuration.GetSection(EmailOptions.SectionName))
+            .ValidateOnStart();
+
+        services.AddSingleton<IValidateOptions<EmailOptions>, EmailOptionsValidator>();
+
         if (environment.IsDevelopment())
         {
             services.AddSingleton<DevelopmentNotificationOutbox>();
@@ -210,7 +219,12 @@ internal static class AuthServiceCollectionExtensions
             return;
         }
 
-        services.AddSingleton<IAccountNotificationSender, UnconfiguredAccountNotificationSender>();
+        // Resolved from IOptions rather than read straight off IConfiguration here, so the
+        // choice honours every configuration source the host ends up with rather than only
+        // the ones present at composition time.
+        services.AddSingleton<IAccountNotificationSender>(provider => AccountNotificationDelivery.Create(
+            provider,
+            provider.GetRequiredService<IOptions<EmailOptions>>().Value));
     }
 }
 

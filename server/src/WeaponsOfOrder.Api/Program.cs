@@ -4,7 +4,9 @@ using WeaponsOfOrder.Api.Battle;
 using WeaponsOfOrder.Api.Content;
 using WeaponsOfOrder.Api.Forge;
 using WeaponsOfOrder.Api.Health;
+using WeaponsOfOrder.Api.Hosting;
 using WeaponsOfOrder.Api.Preparation;
+using WeaponsOfOrder.Api.Telemetry;
 using WeaponsOfOrder.Infrastructure;
 using WeaponsOfOrder.Infrastructure.Persistence;
 
@@ -15,7 +17,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddWeaponsOfOrderContent(builder.Environment);
 
 builder.Services.AddProblemDetails();
-builder.Services.AddWeaponsOfOrderPersistence(builder.Configuration);
+builder.Services.AddWeaponsOfOrderHosting(builder.Configuration);
+builder.Services.AddWeaponsOfOrderTelemetry(builder.Configuration);
+builder.Services.AddWeaponsOfOrderPersistence(builder.Configuration, builder.Environment.ContentRootPath);
 builder.Services.AddWeaponsOfOrderAuth(builder.Configuration, builder.Environment);
 builder.Services.AddWeaponsOfOrderGameContent(builder.Configuration);
 builder.Services.AddWeaponsOfOrderForge(builder.Configuration);
@@ -27,6 +31,20 @@ builder.Services
     .AddDbContextCheck<WeaponsOfOrderDbContext>("database", tags: [HealthEndpoints.ReadinessTag]);
 
 var app = builder.Build();
+
+// First, before anything reads the scheme or the caller's address. Behind App Service the
+// real request is HTTPS from a browser, but this process is handed a plain HTTP one from a
+// platform front end; everything below would otherwise reason about the front end instead
+// of the player. No-op unless a deployment has declared it sits behind a trusted proxy.
+app.UseWeaponsOfOrderForwardedHeaders();
+
+if (!app.Environment.IsDevelopment())
+{
+    // Deployed environments are HTTPS-only. The platform already refuses plain HTTP, so
+    // this is the browser-side half: after one visit it will not try http again, which
+    // closes the window where a session cookie could be requested over the clear.
+    app.UseHsts();
+}
 
 // ProblemDetails for both thrown exceptions and bare status codes, so nothing reaches a
 // player as a stack trace or as an empty body the client cannot interpret.
@@ -59,19 +77,18 @@ if (app.Environment.IsDevelopment())
 // Unmatched /api routes stay 404s instead of falling through to the SPA document.
 app.MapFallback("/api/{**rest}", () => Results.NotFound());
 
-// Single public origin: deployed environments serve the built React client from wwwroot.
-// It is absent during development — Vite serves the client on :1337 and proxies /api
-// here, which keeps the browser on one origin there too — so the static-file pipeline is
-// only wired up when the directory actually exists.
-if (Directory.Exists(Path.Combine(app.Environment.ContentRootPath, "wwwroot")))
-{
-    app.UseDefaultFiles();
-    app.UseStaticFiles();
-    app.MapFallbackToFile("index.html");
-}
+// Single public origin: deployed environments serve the built React client from wwwroot,
+// which is absent during development. See ClientHosting.
+app.MapWeaponsOfOrderClient();
 
-// Migrations are applied explicitly (`dotnet ef database update`), never on startup:
-// automatic migration on boot is unsafe once more than one instance runs.
+// Browser V1 is one App Service instance with one SQLite file on its own persistent
+// storage, so the schema travels with the code and is applied here. Off unless an
+// environment asks for it, and a failure is allowed to stop the process rather than leave it
+// answering requests against a schema that is not there. See DatabaseOptions: a real
+// PostgreSQL production environment goes back to an explicit migration step outside the
+// application, because two instances starting together would both migrate one database.
+await app.Services.MigrateWeaponsOfOrderDatabaseAsync();
+
 app.Run();
 
 /// <summary>Exposed so the API test project can host the real pipeline.</summary>

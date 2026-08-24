@@ -76,7 +76,7 @@ Use:
 - ASP.NET Core on .NET 10;
 - C#;
 - EF Core;
-- PostgreSQL.
+- SQLite for the Browser V1 prototype, PostgreSQL for real production. See **Database**.
 
 The backend is authoritative for:
 - authentication/session identity;
@@ -103,7 +103,22 @@ Follow `.claude/skills/combat/` for actual combat canon.
 
 ## Database
 
-Use PostgreSQL as the primary relational store.
+**Browser V1 prototype — SQLite.**
+
+Development, CI and Azure staging all use a SQLite file through EF Core. Browser V1 is a
+private prototype with effectively one player: a database server is a cost, a moving part and
+an operational burden that buys nothing at this size. Staging keeps its file on the App
+Service instance's persistent storage.
+
+**Real production — PostgreSQL.**
+
+PostgreSQL remains the intended production store. That is a deliberate future step, not
+something Browser V1 half-implements now. The application is ordinary EF Core with no
+provider abstraction over it, so the change is a provider registration and a migration
+history regenerated from the then-current model. There is no expectation that prototype data
+or the SQLite migration baseline transfers; see `docs/deployment/AZURE_STAGING.md`.
+
+Do not build dual-provider migration infrastructure to keep both options open.
 
 Use EF Core migrations for schema changes.
 
@@ -120,7 +135,7 @@ These can be reconsidered if measured requirements justify them.
 
 ## Authentication
 
-Use ASP.NET Core Identity backed by PostgreSQL.
+Use ASP.NET Core Identity backed by the same EF Core store as the rest of the game.
 
 Browser authentication uses same-origin secure cookies. Do not store long-lived bearer/JWT access tokens in `localStorage` for the normal browser session.
 
@@ -145,11 +160,14 @@ The precise domain/subdomain can change without changing the architecture.
 
 ## Azure target
 
-Initial production/staging target:
+Browser V1 staging target:
 - Azure App Service for the ASP.NET Core application and built frontend;
-- Azure Database for PostgreSQL Flexible Server;
+- a SQLite file on the App Service instance's persistent storage — no database resource;
 - Application Insights for server/application telemetry;
-- Azure configuration/secrets facilities appropriate to the deployed environment.
+- Azure configuration facilities appropriate to the deployed environment.
+
+A real production environment adds Azure Database for PostgreSQL Flexible Server. It is not
+provisioned for the prototype.
 
 Do not introduce Kubernetes for V1.
 

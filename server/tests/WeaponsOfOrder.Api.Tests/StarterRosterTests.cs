@@ -61,7 +61,7 @@ public sealed class StarterRosterTests(PreparationApiFactory factory) : IClassFi
         // Repeated over several fresh accounts on purpose. Both requests find no units and
         // both try to grant, and the interleaving that goes wrong is not the common one: when
         // the grants were written as a single transaction the two requests each held index
-        // entries the other was waiting for, and PostgreSQL broke the tie by killing one of
+        // entries the other was waiting for, and the database broke the tie by failing one of
         // them. One account would usually get away with it.
         for (var attempt = 0; attempt < 5; attempt++)
         {

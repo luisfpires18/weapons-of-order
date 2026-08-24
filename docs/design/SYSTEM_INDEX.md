@@ -49,7 +49,7 @@ This is the routing map for game-design and implementation context.
 | Browser auth/account/security architecture | LOCKED FOUNDATION | `docs/architecture/AUTH_SECURITY.md` |
 | Desktop web + mobile PWA layout foundation | LOCKED FOUNDATION | `docs/design/APP_LAYOUT.md` |
 | Approved UI visual baseline | LOCKED FOUNDATION | `docs/design/VISUAL_BASELINE.md` |
-| Persistence/database/API architecture | LOCKED FOUNDATION | ASP.NET Core + EF Core + PostgreSQL in `TECH_STACK.md`; implementation pending |
+| Persistence/database/API architecture | LOCKED FOUNDATION | ASP.NET Core + EF Core in `TECH_STACK.md`; SQLite for the Browser V1 prototype, PostgreSQL for real production |
 | CI + Azure deployment target | LOCKED FOUNDATION | CI starts in Task 1; full Azure staging follows the first complete local gameplay loop in `BUILD_PLAN.md` |
 | Steam client/integration | DEFERRED | Browser V1 first; Steam later |
 | Browser V1 implementation plan | LOCKED FOUNDATION | `docs/implementation/BUILD_PLAN.md` |

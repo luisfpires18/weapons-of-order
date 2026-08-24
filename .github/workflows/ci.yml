@@ -1,13 +1,21 @@
-﻿name: CI
+name: CI
 
 on:
   push:
     branches: [master]
   pull_request:
+  # Deploys the ref selected in the Actions UI, after that ref passes the same validation a
+  # merge would. Useful for trying a branch on real staging before merging it.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Only pull requests. A run on master can reach the database migration step, and cancelling
+  # that halfway leaves staging in a state nothing else knows about.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
   web:
@@ -50,32 +58,6 @@ jobs:
     name: Server
     runs-on: ubuntu-latest
 
-    # This database exists for the length of one job, on the runner's own network, and is
-    # destroyed with it. It therefore has no password at all rather than a committed
-    # placeholder one: a fake credential in a connection string is indistinguishable from a
-    # real leaked one to a secret scanner, and there is nothing here worth protecting.
-    #
-    # Never copy this to an environment that outlives a job. Local development still uses a
-    # password (docker-compose.yml), and deployed environments supply real credentials
-    # through environment configuration.
-    env:
-      WOO_CI_POSTGRES: Host=localhost;Port=5432;Username=woo_dev
-
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_DB: weapons_of_order
-          POSTGRES_USER: woo_dev
-          POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U woo_dev -d weapons_of_order"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
     steps:
       - uses: actions/checkout@v7
 
@@ -93,25 +75,190 @@ jobs:
       - name: Build
         run: dotnet build server/WeaponsOfOrder.slnx --configuration Release --no-restore
 
-      # The account tests run against real PostgreSQL: Identity's normalization, unique
-      # indexes and concurrency stamps are not exercised by a substitute store. The suite
-      # migrates its own database on first use, so no extra setup step is needed here.
+      # The account and gameplay tests run against a real SQLite file, not a substitute
+      # store: Identity's normalization, the unique and partial indexes the forge and the
+      # army depend on, and the check constraints are all things only the provider enforces.
+      # There is nothing to install and no service container to wait for — the suite creates
+      # its own database under the runner's temporary directory and migrates it.
       - name: Test
-        env:
-          WOO_TEST_CONNECTION_STRING: ${{ env.WOO_CI_POSTGRES }};Database=weapons_of_order_tests
         run: dotnet test server/WeaponsOfOrder.slnx --configuration Release --no-build
 
       - name: Restore dotnet tools
         run: dotnet tool restore
 
-      # Proves the migration pipeline reaches a real PostgreSQL instance and applies
-      # cleanly from an empty database.
+      # Proves the migration history applies from nothing, which is what a fresh staging
+      # instance does on its first start.
       - name: Apply migrations to a clean database
         env:
-          ConnectionStrings__WeaponsOfOrder: ${{ env.WOO_CI_POSTGRES }};Database=weapons_of_order
-        run: >-
-          dotnet ef database update
-          --project server/src/WeaponsOfOrder.Infrastructure
-          --startup-project server/src/WeaponsOfOrder.Api
-          --configuration Release
-          --no-build
+          ConnectionStrings__WeaponsOfOrder: Data Source=${{ runner.temp }}/migration-check/weapons-of-order.db
+        run: |
+          mkdir -p "${{ runner.temp }}/migration-check"
+          dotnet ef database update \
+            --project server/src/WeaponsOfOrder.Infrastructure \
+            --startup-project server/src/WeaponsOfOrder.Api \
+            --configuration Release \
+            --no-build
+
+  infra:
+    name: Infra
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Needs no Azure subscription, no sign-in and no network, and creates nothing. It
+      # exists because a provisioning bug found this way was invisible to every check that
+      # existed: a runtime listing compared by whole line, once the CLI started adding
+      # columns. It parses fine. It only appeared partway through a real provisioning run.
+      - name: Azure CLI output parsing
+        run: infra/azure/lib/az-output.test.sh
+
+      - name: Shell syntax
+        run: |
+          for script in $(git ls-files '*.sh'); do
+            bash -n "$script"
+          done
+
+      # Compiles and lints the whole template graph. No sign-in, nothing deployed.
+      - name: Bicep
+        run: |
+          az bicep install --only-show-errors
+          az bicep build --file infra/azure/main.bicep --stdout > /dev/null
+          # No parameter is secure any more, so nothing has to be supplied to read this.
+          az bicep build-params --file infra/azure/main.bicepparam --stdout > /dev/null
+
+  package:
+    name: Package
+    # Nothing is built for deployment until the code has passed every validation suite. This
+    # is also what makes the deployment job below unable to run on an unvalidated commit.
+    needs: [web, server, infra]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: web/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      # The same script a developer runs. It publishes the application with the built
+      # client inside it and then asserts the result contains what a deployment needs and
+      # none of the local development configuration.
+      - name: Build the deployable artifact
+        run: scripts/publish-artifact.sh artifacts/staging
+
+      # Zipped here rather than by upload-artifact, because App Service is deployed a zip
+      # and re-zipping a downloaded directory would rebuild it differently.
+      - name: Package for App Service
+        run: |
+          cd artifacts/staging
+          zip --quiet --recurse-paths ../weapons-of-order.zip .
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: staging-app
+          path: artifacts/weapons-of-order.zip
+          retention-days: 7
+          if-no-files-found: error
+
+  deploy-staging:
+    name: Deploy staging
+    needs: package
+    # A pull request never reaches this. A push to master does, and so does a manual run of
+    # any ref — which still had to pass Web, Server and Package first.
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/master')
+      || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    # The federated credential is bound to this environment name. A job that does not
+    # declare it cannot obtain an Azure token at all.
+    environment:
+      name: staging
+      url: ${{ steps.target.outputs.base_url }}
+
+    # Never cancelled and never overlapping. The application migrates its own SQLite file
+    # while it starts, so a second deployment arriving mid-restart would replace the binaries
+    # underneath a migration that is still running.
+    concurrency:
+      group: weapons-of-order-staging
+      cancel-in-progress: false
+
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v6
+        with:
+          name: staging-app
+          path: artifacts
+
+      - name: Say what is being deployed
+        run: |
+          {
+            echo "### Staging deployment"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Trigger | \`${{ github.event_name }}\` |"
+            echo "| Ref | \`${{ github.ref_name }}\` |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # OIDC. GitHub mints a short-lived token for this run and Entra exchanges it; there is
+      # no Azure client secret in this repository, and no database credential either.
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve the staging origin
+        id: target
+        run: |
+          host="$(az webapp show \
+            --name "$AZURE_WEBAPP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query defaultHostName --output tsv)"
+          echo "base_url=https://$host" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to App Service
+        run: |
+          az webapp deploy \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_WEBAPP_NAME" \
+            --src-path artifacts/weapons-of-order.zip \
+            --type zip \
+            --output none
+
+      # No migration step here. The application brings its own SQLite file up to date when it
+      # starts, because that file lives on the instance the code was just deployed to. The
+      # readiness check below is what proves the migration succeeded: it opens the database.
+      #
+      # Azure accepting the package is not evidence the game is running. This is. The budget
+      # is generous because the Free tier has no Always On, so the first request after a
+      # deployment pays for a cold start and the migration together.
+      - name: Smoke test the deployment
+        env:
+          STAGING_BASE_URL: ${{ steps.target.outputs.base_url }}
+          SMOKE_TIMEOUT_SECONDS: 420
+        run: scripts/smoke-staging.sh "$STAGING_BASE_URL"
+
+      - name: Record the result
+        if: always()
+        run: echo "| Staging | ${{ steps.target.outputs.base_url }} |" >> "$GITHUB_STEP_SUMMARY"

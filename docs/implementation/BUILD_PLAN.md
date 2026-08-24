@@ -341,7 +341,7 @@ Recruitment, progression, specialisation names, armour items and combat remain o
 
 ## Task 6 - Army deployment + combat prototype
 
-**Status: THIS BRANCH / AWAITING CREATOR REVIEW**
+**Status: MERGED**
 
 ### Goal
 
@@ -415,6 +415,8 @@ harness, not roster content.
 
 ## Task 7 - Azure staging + deployment pipeline
 
+**Status: THIS BRANCH / AWAITING CREATOR REVIEW**
+
 ### Goal
 
 Make the proven Browser V1 local loop reproducibly deployable to a production-like staging environment.
@@ -426,7 +428,7 @@ This intentionally comes **after** the first complete local gameplay loop. CI ex
 Establish:
 - GitHub Actions deployment stage on top of the existing validation workflow;
 - Azure App Service staging target;
-- Azure PostgreSQL configuration;
+- persistent staging database configuration;
 - environment configuration/secrets model;
 - EF Core migration deployment procedure;
 - Application Insights/usable server telemetry;
@@ -434,6 +436,25 @@ Establish:
 - safe staging database separation.
 
 Do not introduce Kubernetes, microservices or Redis.
+
+### Creator decision during this task: SQLite and the Free tier
+
+Task 7 originally provisioned Azure Database for PostgreSQL Flexible Server and a B1 App
+Service plan. It worked end to end, and it cost money every day to run a prototype with one
+player and no traffic.
+
+The creator's explicit decision, which supersedes the PostgreSQL staging assumptions above:
+
+- **Browser V1 prototype uses SQLite** — local development, CI and Azure staging alike.
+- **Azure staging runs on the F1 Free App Service plan**, with the SQLite file on the
+  instance's persistent `/home` storage, surviving redeployments.
+- **PostgreSQL remains the intended store for real production**, to be designed when
+  production is actually designed. Prototype data is disposable; there is no requirement to
+  preserve the PostgreSQL migration history or migrate staging data.
+
+The priority is a prototype that is simple and cheap. Complexity is not preserved merely
+because it was already built — the PostgreSQL implementation stays in git history for
+reference when production work begins.
 
 ### Acceptance
 
@@ -445,6 +466,72 @@ Do not introduce Kubernetes, microservices or Redis.
 - database migration procedure is explicit/repeatable.
 
 ---
+
+### What this branch built
+
+- **`infra/azure/`**, the whole staging environment as Bicep: a resource group of its own, a
+  Linux App Service on the **Free tier**, Application Insights over a daily-capped Log
+  Analytics workspace, Azure Communication Services for account email, and the federated
+  identity GitHub Actions deploys as. There is no database resource and no secret anywhere in
+  it. `infra/azure/bootstrap.sh` runs the lot — including the `what-if` — from one command
+  that works in the Azure Portal's Cloud Shell, and takes no arguments at all.
+- **SQLite as the prototype's store**, through ordinary EF Core with no abstraction over it.
+  Development keeps its file in a git-ignored `.data/`; CI creates one under the runner's
+  temporary directory; staging keeps one at `/home/data/weapons-of-order.db`, on App
+  Service's persistent share and deliberately outside the deployed application, so a
+  redeployment cannot replace it. Nothing needs installing to run or test the game any more.
+- **a single SQLite migration baseline**, rebuilt from the current model. Every schema
+  semantic the game relies on came with it: Identity's tables, the forge, inventory, units,
+  equipment, deployment, the partial indexes that hold one weapon per hand and one Unit per
+  hex, and the check constraints on materials and placements.
+- **`Database:MigrateOnStartup`**, off by default and on for Browser V1. One instance, one
+  file on that instance, so the schema travels with the code and the application applies it
+  before serving anything. Migrations only, never `EnsureCreated`, never a drop, no seeding,
+  and a failure stops the process rather than leaving it answering against a schema that is
+  not there. Documented as something a real PostgreSQL production environment must turn off.
+- **one origin, one artifact.** `scripts/publish-artifact.sh` builds the client into the
+  API's `wwwroot` and publishes the application on top, then asserts the result carries the
+  assemblies, `server/content`, `index.html`, a hashed bundle, the manifest and the service
+  worker — and carries no database file and no local development configuration. ASP.NET Core
+  serves the client, the PWA files and `/api` from one process, with SPA fallback so
+  `/battle` typed into the address bar reaches React, hashed assets cached immutably and the
+  files that keep their name across releases not cached at all.
+- **the deployment stage on top of the existing CI.** A pull request validates and packages
+  and stops. A push to master, or a manual run of a chosen ref, deploys and smoke-tests — and
+  cannot start until the web, server and infrastructure validation jobs and the packaging job
+  have all passed. No migration step, no database credential, and nothing in the workflow that
+  touches a database: readiness is what proves the startup migration succeeded, because
+  readiness opens the database.
+- **no secret in the repository, and none in the GitHub Environment either.** GitHub Actions
+  authenticates by exchanging a short-lived OIDC token for a user-assigned identity whose
+  federated subject names the `staging` Environment and whose only permission is Website
+  Contributor on one site. Five non-secret variables, zero secrets.
+- **the deployment half of AUTH_SECURITY.md**, which that document had left open: forwarded
+  headers first in the pipeline with `ForwardLimit = 1`, so the Secure cookie and the
+  rate-limit partitions see the real scheme and the real caller while a client's own
+  `X-Forwarded-For` is discarded; HSTS outside Development; and startup that refuses to boot
+  when `Auth:ClientBaseUrl` is not an https origin in a deployed environment.
+- **real account email in deployed environments** through Azure Communication Services on an
+  Azure-managed domain, authenticated as the site's managed identity so no provider key
+  exists. The link — a single-use bearer credential — still never reaches a log, and never
+  reaches telemetry either: a span processor strips query strings before export, because
+  `/confirm-email?token=…` is a request this server answers.
+- **usable server telemetry** through the Azure Monitor OpenTelemetry distro rather than the
+  retired classic SDK, plus App Service platform and console logs routed to the same
+  workspace — which on a tier with cold starts is how a container that exits before the
+  application starts is diagnosed at all.
+- **`docs/deployment/AZURE_STAGING.md`**: architecture, what it costs and what the Free tier
+  costs instead, where the database lives and why there, provisioning, the GitHub
+  Environment's exact variables, the migration policy, redeploy, telemetry queries, browser
+  verification, the boundary at which PostgreSQL comes back, a teardown path that says
+  precisely what deleting the resource group destroys, and the one-time steps for leaving the
+  earlier PostgreSQL environment behind.
+
+Local development is untouched in every other respect. `dotnet run` and `pnpm dev` need no
+Azure sign-in, no vault and no staging secret, and the Development-only notification outbox
+remains Development-only.
+
+No gameplay was added, and no gameplay behaviour changed.
 
 ## After Task 7
 

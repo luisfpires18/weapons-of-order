@@ -63,7 +63,7 @@ export function idleForge(overrides: Partial<ForgeState> = {}): ForgeState {
  * list beside the anvil. It decides nothing the real server decides — the band each blow
  * lands in is scripted by the test, because the point of these assertions is what the screen
  * does with the server's answer, not what the answer should have been. The real rule is
- * proven against PostgreSQL in the API tests and against a running stack in the browser
+ * proven against a real database in the API tests and against a running stack in the browser
  * sweep.
  */
 export function fakeForge(options: { bands?: HeatBandName[]; state?: Partial<ForgeState> } = {}) {

@@ -4,7 +4,10 @@ This document is the implementation authority for Browser V1 authentication/sess
 
 ## V1 account model
 
-Browser V1 uses a Weapons of Order account backed by **ASP.NET Core Identity + PostgreSQL**.
+Browser V1 uses a Weapons of Order account backed by **ASP.NET Core Identity + EF Core**.
+
+The store underneath is SQLite for the prototype and PostgreSQL for real production; see
+`TECH_STACK.md`. Nothing in this document depends on which it is.
 
 Initial login method:
 - email + password.
