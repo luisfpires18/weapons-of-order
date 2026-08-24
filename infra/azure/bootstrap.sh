@@ -36,6 +36,12 @@ readonly BOOTSTRAP_RULE="bootstrap-$(date +%s)"
 # shellcheck source=./lib/az-output.sh
 . "$ROOT/infra/azure/lib/az-output.sh"
 
+# Where libpq should look for its trusted roots. `sslmode=verify-full` alone does not say
+# what to verify against, and libpq's default is a per-user file that does not exist on a
+# fresh Cloud Shell.
+# shellcheck source=./lib/psql-tls.sh
+. "$ROOT/infra/azure/lib/psql-tls.sh"
+
 die() { printf '\nERROR: %s\n' "$1" >&2; exit 1; }
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
@@ -49,6 +55,11 @@ az account show --output none 2>/dev/null || die "Not signed in. Run 'az login' 
 [ "$WOO_PG_ADMIN_PASSWORD" != "$WOO_PG_APP_PASSWORD" ] || die "The two passwords must differ. The point of the second role is that it is not the administrator."
 
 command -v psql >/dev/null || die "psql is not on PATH. It is needed to create the application's database role."
+
+# Resolved now rather than at the moment of use, so a machine with no usable CA store is
+# turned away before any resource is created rather than after. Lowering sslmode is not an
+# alternative: verify-full is what proves the server answering is Azure's.
+sslrootcert="$(azure_postgres_sslrootcert)" || die "No CA trust store was found for psql. Install the ca-certificates package, or use a psql from PostgreSQL 16 or later, which reads the system store directly."
 
 subscription="$(az account show --query name --output tsv)"
 step "Subscription: $subscription"
@@ -162,7 +173,7 @@ az postgres flexible-server firewall-rule create \
     --output none
 
 PGPASSWORD="$WOO_PG_ADMIN_PASSWORD" psql \
-    "host=$db_host port=5432 dbname=$db_name user=$db_admin sslmode=verify-full" \
+    "$(azure_postgres_conninfo "$db_host" "$db_name" "$db_admin" "$sslrootcert")" \
     --set=ON_ERROR_STOP=1 \
     --set=runtime_role="$db_runtime" \
     --set=admin_role="$db_admin" \

@@ -5,7 +5,7 @@
 -- Azure Resource Manager cannot create a PostgreSQL role, so this is the one piece of the
 -- environment that is not in Bicep.
 --
---   psql "host=<server>.postgres.database.azure.com port=5432 dbname=weapons_of_order_staging user=woo_admin sslmode=verify-full" \
+--   psql "host=<server>.postgres.database.azure.com port=5432 dbname=weapons_of_order_staging user=woo_admin sslmode=verify-full sslrootcert=system" \
 --     -v ON_ERROR_STOP=1 \
 --     -v runtime_role=woo_app \
 --     -v admin_role=woo_admin \

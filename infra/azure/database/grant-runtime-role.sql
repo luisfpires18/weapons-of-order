@@ -3,7 +3,8 @@
 --
 -- Idempotent, and run by the deployment workflow after every migration:
 --
---   psql "..." -v ON_ERROR_STOP=1 -v runtime_role=woo_app -v admin_role=woo_admin \
+--   psql "host=<server>.postgres.database.azure.com port=5432 dbname=weapons_of_order_staging user=woo_admin sslmode=verify-full sslrootcert=system" \
+--     -v ON_ERROR_STOP=1 -v runtime_role=woo_app -v admin_role=woo_admin \
 --     -f infra/azure/database/grant-runtime-role.sql
 --
 -- ALTER DEFAULT PRIVILEGES is what keeps this coherent as the schema grows: a table created

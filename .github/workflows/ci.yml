@@ -141,6 +141,11 @@ jobs:
       - name: Azure CLI command syntax
         run: infra/azure/lib/az-cli-syntax.test.sh
 
+      # Also scans every Azure PostgreSQL connection string in the repository, so a
+      # connection cannot quietly stop verifying the server it is talking to.
+      - name: PostgreSQL TLS
+        run: infra/azure/lib/psql-tls.test.sh
+
       - name: Shell syntax
         run: |
           for script in $(git ls-files '*.sh'); do
@@ -318,14 +323,17 @@ jobs:
       - name: Grant the runtime role what the new schema holds
         env:
           PGPASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
-        run: >-
-          psql
-          "host=${AZURE_POSTGRES_SERVER}.postgres.database.azure.com port=5432
-          dbname=${POSTGRES_DATABASE} user=${POSTGRES_ADMIN_LOGIN} sslmode=verify-full"
-          --set=ON_ERROR_STOP=1
-          --set=runtime_role="${POSTGRES_RUNTIME_LOGIN}"
-          --set=admin_role="${POSTGRES_ADMIN_LOGIN}"
-          --file infra/azure/database/grant-runtime-role.sql
+        run: |
+          # `sslmode=verify-full` does not say what to verify against, and libpq's default
+          # is a per-user file no runner has. This names the platform CA store instead.
+          . infra/azure/lib/psql-tls.sh
+          sslrootcert="$(azure_postgres_sslrootcert)"
+          conninfo="$(azure_postgres_conninfo "${AZURE_POSTGRES_SERVER}.postgres.database.azure.com" "$POSTGRES_DATABASE" "$POSTGRES_ADMIN_LOGIN" "$sslrootcert")"
+          psql "$conninfo" \
+            --set=ON_ERROR_STOP=1 \
+            --set=runtime_role="$POSTGRES_RUNTIME_LOGIN" \
+            --set=admin_role="$POSTGRES_ADMIN_LOGIN" \
+            --file infra/azure/database/grant-runtime-role.sql
 
       # always(), so a failed migration does not leave the server reachable from an address
       # nobody is watching any more.

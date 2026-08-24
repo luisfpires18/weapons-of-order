@@ -59,7 +59,7 @@ resource group down — see [Teardown](#teardown).
 | Tool | Why |
 | --- | --- |
 | Azure CLI 2.60+ | Provisioning and deployment. `az bicep install` on first use. |
-| `psql` (PostgreSQL 16+ client) | Creating the application's database role. |
+| `psql` (PostgreSQL 16+ preferred) | Creating the application's database role. 16 and later can verify against the platform CA store directly; older clients are handled, see [Transport](#transport). |
 | .NET SDK per `global.json` | `dotnet ef` for migrations. |
 | Node + pnpm per `.nvmrc` / `packageManager` | Building the client into the artifact. |
 | A password manager | Two database passwords live there and nowhere else in the repository. |
@@ -223,7 +223,7 @@ az postgres flexible-server firewall-rule create --resource-group rg-weaponsofor
 ```
 
 ```bash
-psql "host=<postgres server>.postgres.database.azure.com port=5432 dbname=weapons_of_order_staging user=woo_admin sslmode=verify-full" -v ON_ERROR_STOP=1 -v runtime_role=woo_app -v admin_role=woo_admin -v runtime_password="$WOO_PG_APP_PASSWORD" -f infra/azure/database/create-runtime-role.sql
+psql "host=<postgres server>.postgres.database.azure.com port=5432 dbname=weapons_of_order_staging user=woo_admin sslmode=verify-full sslrootcert=system" -v ON_ERROR_STOP=1 -v runtime_role=woo_app -v admin_role=woo_admin -v runtime_password="$WOO_PG_APP_PASSWORD" -f infra/azure/database/create-runtime-role.sql
 ```
 
 ```bash
@@ -378,9 +378,39 @@ Two kinds of rule exist:
 
 That temporary window is the trade-off for migrating from a GitHub-hosted runner whose
 address is not known in advance. The alternatives are a self-hosted runner or a VNet the rest
-of this environment has no use for. Connections require TLS in both directions
-(`require_secure_transport` is on, and both the application and the workflow connect with
-`VerifyFull`).
+of this environment has no use for.
+
+### Transport
+
+`require_secure_transport` is on at the server, and every client verifies the certificate
+and the hostname. Nothing connects with a mode that only encrypts.
+
+| Client | Setting | Trusted roots |
+| --- | --- | --- |
+| The application, and `dotnet ef` | `SSL Mode=VerifyFull` | The operating system store,
+which Npgsql uses on its own. |
+| `psql` | `sslmode=verify-full sslrootcert=system` | The same store, named explicitly. |
+
+The difference is not an inconsistency, it is the two libraries. Npgsql validates against
+the platform's trust store by default and has no `sslrootcert` keyword at all. libpq has
+one, and with it unset it looks for `~/.postgresql/root.crt` and refuses to connect when
+that file is absent — which on a fresh Cloud Shell it always is:
+
+```text
+psql: error: connection to server at "psql-....postgres.database.azure.com" failed:
+root certificate file "/home/<user>/.postgresql/root.crt" does not exist
+```
+
+`sslrootcert=system` is the fix: it names the platform CA store, which already carries the
+public root Azure's certificate chains to. There is nothing to download and nothing to pin —
+pinning an intermediate would only turn Azure's next rotation into an outage. libpq has
+understood `system` since PostgreSQL 16; on an older client `infra/azure/lib/psql-tls.sh`
+falls back to the platform CA bundle by path, which is the same roots named differently, and
+refuses to run at all if it can find neither.
+
+Lowering the mode is **not** a fix for a missing root store, and
+`infra/azure/lib/psql-tls.test.sh` fails the build if any connection in this repository
+tries it.
 
 ### Migrations
 

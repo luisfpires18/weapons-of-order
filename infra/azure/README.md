@@ -21,6 +21,8 @@ lib/
   az-output.sh                   parsing for Azure CLI listings, used by bootstrap.sh
   az-output.test.sh              its tests — no subscription, no network, creates nothing
   az-cli-syntax.test.sh          static check on the Azure CLI commands this repo runs
+  psql-tls.sh                    where libpq should find its trusted roots
+  psql-tls.test.sh               its tests, and a scan of every connection string
 ```
 
 The full procedure, the GitHub Environment configuration and the teardown path are in
@@ -59,8 +61,19 @@ is not a syntax error, so `bash -n` will never see it.
 infra/azure/lib/az-cli-syntax.test.sh
 ```
 
-Both run in CI's `Infra` job, which the packaging job depends on — so a broken provisioning
-script cannot reach a deployment.
+A third checks TLS. `sslmode=verify-full` reads like the whole answer and is not: libpq also
+has to be told where the trusted roots are, and its default is a per-user file no fresh
+machine has. `lib/psql-tls.sh` resolves that to the platform CA store, and the check scans
+every Azure PostgreSQL connection string in the repository — libpq and Npgsql — and fails if
+one stops verifying the server, drops to a mode that only encrypts, or sets
+`Trust Server Certificate`.
+
+```bash
+infra/azure/lib/psql-tls.test.sh
+```
+
+All three run in CI's `Infra` job, which the packaging job depends on — so a broken
+provisioning script cannot reach a deployment.
 
 ## Preview against a real subscription
 
