@@ -101,8 +101,25 @@ missing file but not a missing directory.
 - SQLite here is a **single-instance** store. Scaling the App Service plan out to two
   instances would give each its own file and quietly split the game in two. Do not.
 
-Write-ahead logging is turned on at startup, so a write does not block concurrent reads, and
-the connection string sets a busy timeout so a write arriving during another one waits.
+**This whole arrangement is a prototype-only compromise, and it is deliberate.** A SQLite file
+on a network-backed share is not a production persistence architecture: it is single-instance
+by construction, it cannot use write-ahead logging, it is not backed up, and the data in it is
+disposable by decision. It is here because Browser V1 has one player and no traffic, and a
+database server would be a daily cost and a moving part that buys nothing at that size.
+PostgreSQL replaces it for real production — see
+[Where PostgreSQL comes back](#where-postgresql-comes-back).
+
+The database runs in SQLite's default rollback-journal mode, and the application sets it
+back to that at startup. That step is necessary rather than cosmetic: **EF Core's SQLite
+provider turns write-ahead logging on for itself when it creates a database**, so simply not
+asking for WAL would still leave staging in it.
+
+WAL is the better mode on a local disk and the wrong one here. Its index lives in shared
+memory, which SQLite documents as unavailable across a network filesystem — and `/home` is
+Azure Storage behind a share, not a local disk. The rollback journal plus the busy timeout in
+the connection string (`Default Timeout=30`, so a write arriving during another one waits
+rather than failing) is what this prototype needs. A test asserts startup does not leave the
+database in WAL.
 
 ### Migrations
 

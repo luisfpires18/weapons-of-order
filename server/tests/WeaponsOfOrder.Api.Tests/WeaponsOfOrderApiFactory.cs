@@ -93,8 +93,9 @@ public class WeaponsOfOrderApiFactory : WebApplicationFactory<Program>, IAsyncLi
             }
 
             // Every run starts from nothing, so a test can never pass because of a row an
-            // earlier run left behind. The whole directory goes: SQLite leaves -wal and -shm
-            // beside the file, and a stale write-ahead log would be replayed into the new one.
+            // earlier run left behind. The whole directory goes rather than the one file:
+            // SQLite leaves a journal beside it, and a stale one would be replayed into the
+            // new database.
             var directory = Path.GetDirectoryName(DatabasePath)!;
             if (Directory.Exists(directory))
             {
@@ -107,9 +108,14 @@ public class WeaponsOfOrderApiFactory : WebApplicationFactory<Program>, IAsyncLi
             var database = scope.ServiceProvider.GetRequiredService<WeaponsOfOrderDbContext>().Database;
             await database.MigrateAsync(TestContext.Current.CancellationToken);
 
-            // One writer, many concurrent readers. Test classes run in parallel against this
-            // one file, and without it a write blocks every read on the connection pool.
-            await database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", TestContext.Current.CancellationToken);
+            // The same journal mode staging runs. EF Core creates a SQLite database in WAL,
+            // which staging cannot use because its file is on a network share, so the tests
+            // would otherwise be exercising a mode the deployed game never has. The busy
+            // timeout in the connection string is what lets parallel test classes share this
+            // one file without it.
+            await database.ExecuteSqlRawAsync(
+                "PRAGMA journal_mode=DELETE;",
+                TestContext.Current.CancellationToken);
 
             _migrated = true;
         }

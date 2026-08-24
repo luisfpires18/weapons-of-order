@@ -50,9 +50,12 @@ var alwaysOn = planTier != 'Free' && planTier != 'Shared'
 var healthCheckPath = alwaysOn ? '/api/health' : null
 
 // Default Timeout is SQLite's busy timeout. One process, but many concurrent requests within
-// it: a write that arrives during another write should wait rather than fail. Write-ahead
-// logging, which is what keeps reads out of that queue entirely, is turned on by the
-// application at startup.
+// it: a write that arrives during another write should wait rather than fail.
+//
+// The application puts the journal mode back to SQLite's default at startup, because EF Core
+// creates a SQLite database in write-ahead logging mode. WAL would keep reads out of that
+// queue, but its index needs shared-memory semantics a network filesystem cannot give, and
+// /home is Azure Storage behind a share.
 var connectionString = 'Data Source=${databasePath};Default Timeout=30'
 
 resource plan 'Microsoft.Web/serverfarms@2024-11-01' = {

@@ -11,7 +11,7 @@ server/src/WeaponsOfOrder.Api/wwwroot/
 # Deployment artifacts produced by scripts/publish-artifact.sh
 artifacts/
 
-# The local development SQLite database and its write-ahead log. Game data, not source.
+# The local development SQLite database and any journal beside it. Game data, not source.
 .data/
 *.db
 *.db-wal

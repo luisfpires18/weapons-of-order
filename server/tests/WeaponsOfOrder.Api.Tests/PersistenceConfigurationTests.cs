@@ -149,9 +149,14 @@ public sealed class SqliteMigrationTests
     }
 
     [Fact]
-    public async Task Write_ahead_logging_is_on_after_startup()
+    public async Task Startup_does_not_switch_the_database_to_write_ahead_logging()
     {
-        // One writer and many concurrent readers, rather than a write that blocks every read.
+        // This is a guard, not a preference. Write-ahead logging keeps readers out of a
+        // writer's way, which is tempting for a web application — but its index relies on
+        // shared-memory semantics that a network filesystem does not provide, and in staging
+        // this file lives on App Service's /home, which is Azure Storage behind a share.
+        // Turning it on there risks a corrupt database, and the default rollback journal plus
+        // the busy timeout is enough for one player.
         using var temporary = new TemporaryDatabase();
 
         using var provider = temporary.BuildProvider(migrateOnStartup: true);
@@ -162,7 +167,44 @@ public sealed class SqliteMigrationTests
             .Database.SqlQueryRaw<string>("PRAGMA journal_mode;")
             .ToListAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal("wal", mode.Single(), ignoreCase: true);
+        Assert.NotEqual("wal", mode.Single(), StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task An_existing_write_ahead_logging_database_is_converted_back()
+    {
+        // The repair path. A database created before this rule existed — or by any tool that
+        // left EF Core's default in place — is already in WAL, and starting the application
+        // has to move it rather than leave it. Local development databases are exactly that.
+        using var temporary = new TemporaryDatabase();
+        await temporary.MigrateAsync();
+
+        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection(
+            $"Data Source={temporary.DatabaseFile}"))
+        {
+            await connection.OpenAsync(TestContext.Current.CancellationToken);
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA journal_mode=WAL;";
+            Assert.Equal("wal", (string)(await command.ExecuteScalarAsync(
+                TestContext.Current.CancellationToken))!, ignoreCase: true);
+        }
+
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+
+        var userId = await temporary.WriteAnAccountAsync();
+
+        using var provider = temporary.BuildProvider(migrateOnStartup: true);
+        await provider.MigrateWeaponsOfOrderDatabaseAsync(TestContext.Current.CancellationToken);
+
+        using var scope = provider.CreateScope();
+        var mode = await scope.ServiceProvider.GetRequiredService<WeaponsOfOrderDbContext>()
+            .Database.SqlQueryRaw<string>("PRAGMA journal_mode;")
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal("delete", mode.Single(), ignoreCase: true);
+
+        // Converting the journal must not cost a row.
+        Assert.True(await temporary.AccountExistsAsync(userId));
     }
 
     [Fact]

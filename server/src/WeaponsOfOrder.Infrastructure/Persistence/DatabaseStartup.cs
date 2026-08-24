@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -57,6 +58,10 @@ public static class DatabaseStartup
     /// answers its liveness check and then fails every query against a schema that is not
     /// there, which is far harder to see than a container that refuses to come up.
     /// </para>
+    /// <para>
+    /// The journal mode is then put back to SQLite's own default. See
+    /// <see cref="UseRollbackJournalAsync"/>: this is not a preference, and it is not a no-op.
+    /// </para>
     /// </remarks>
     public static async Task MigrateWeaponsOfOrderDatabaseAsync(
         this IServiceProvider services,
@@ -94,24 +99,35 @@ public static class DatabaseStartup
             logger.LogInformation("The database schema is now up to date.");
         }
 
-        await EnableWriteAheadLoggingAsync(database, logger, cancellationToken);
+        await UseRollbackJournalAsync(database, logger, cancellationToken);
     }
 
     /// <summary>
-    /// Puts the database in WAL mode.
+    /// Puts the database back into SQLite's default rollback-journal mode.
     /// </summary>
     /// <remarks>
-    /// One writer and many concurrent readers, instead of a write that blocks every read.
-    /// This is a web application: a battle being saved should not stall the requests drawing
-    /// the screen beside it. The setting is recorded in the database file itself, so this is
-    /// idempotent and mostly a no-op after the first start.
     /// <para>
-    /// Skipped for an in-memory database, which has no journal and answers this with an
-    /// error.
+    /// Necessary, not cosmetic. EF Core's SQLite provider turns write-ahead logging on for
+    /// itself when it creates a database, so a file this application has never configured is
+    /// already in WAL — removing an explicit <c>PRAGMA journal_mode=WAL</c> from this method
+    /// would not have been enough on its own.
+    /// </para>
+    /// <para>
+    /// WAL is the better mode on a local disk, and the wrong one here. Its index lives in
+    /// shared memory, which SQLite documents as unavailable across a network filesystem — and
+    /// in staging this file sits on App Service's <c>/home</c>, which is Azure Storage behind
+    /// a share rather than a local disk. The rollback journal plus the busy timeout in the
+    /// connection string is what a single-instance, one-player prototype needs.
+    /// </para>
+    /// <para>
+    /// Idempotent: the mode is recorded in the file, so this is a no-op on every start after
+    /// the first, and it converts an existing WAL database back rather than leaving it.
+    /// Running before the first request is what makes the conversion safe — SQLite needs no
+    /// other connection open to change it.
     /// </para>
     /// </remarks>
-    private static async Task EnableWriteAheadLoggingAsync(
-        Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade database,
+    private static async Task UseRollbackJournalAsync(
+        DatabaseFacade database,
         ILogger logger,
         CancellationToken cancellationToken)
     {
@@ -120,15 +136,15 @@ public static class DatabaseStartup
             return;
         }
 
-        var mode = await database.SqlQueryRaw<string>("PRAGMA journal_mode=WAL;")
+        var mode = await database.SqlQueryRaw<string>("PRAGMA journal_mode=DELETE;")
             .ToListAsync(cancellationToken);
 
         var applied = mode.FirstOrDefault() ?? "unknown";
 
-        if (!string.Equals(applied, "wal", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(applied, "delete", StringComparison.OrdinalIgnoreCase))
         {
-            // An in-memory database answers "memory" and that is correct for it. Anything
-            // else is worth knowing about without being worth refusing to start over.
+            // An in-memory database answers "memory", which is correct for it and cannot be
+            // changed. Anything else is worth seeing without being worth refusing to start.
             logger.LogInformation("SQLite journal mode is {JournalMode}.", applied);
         }
     }
