@@ -356,6 +356,10 @@ already granted to `woo_app`. The workflow re-runs `grant-runtime-role.sql` afte
 migration anyway, which is idempotent and removes the failure where staging boots and then
 cannot read its own new table.
 
+Both scripts are exercised against a real PostgreSQL by
+`infra/azure/database/database-role.test.sh`, on a throwaway database and role, which is
+where the claims below are actually checked rather than asserted.
+
 The application therefore cannot change the schema, cannot empty a table, and cannot rewrite
 the migration history. It also holds no Azure subscription credential of any kind — the site
 identity can send account email through one Communication Services resource and reach nothing

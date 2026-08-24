@@ -17,6 +17,7 @@ modules/
 database/
   create-runtime-role.sql        creates the restricted application role — run once
   grant-runtime-role.sql         idempotent grants — re-run after every migration
+  database-role.test.sh          runs both against a real PostgreSQL, on throwaway names
 lib/
   az-output.sh                   parsing for Azure CLI listings, used by bootstrap.sh
   az-output.test.sh              its tests — no subscription, no network, creates nothing
@@ -74,6 +75,28 @@ infra/azure/lib/psql-tls.test.sh
 
 All three run in CI's `Infra` job, which the packaging job depends on — so a broken
 provisioning script cannot reach a deployment.
+
+## Exercising the bootstrap SQL
+
+The two SQL scripts cannot be checked by reading them. psql substitutes its variables in
+ordinary SQL and **not** inside a quoted or dollar-quoted body, so a `DO $$ … $$` block
+using `:'role'` reaches the server with the colons intact and fails there — which is
+invisible until a server parses it, and is exactly how it was found: halfway through a real
+provisioning run.
+
+So they are run for real, against the local development PostgreSQL:
+
+```bash
+infra/azure/database/database-role.test.sh
+```
+
+It creates a database and a role named after its own process id, exercises creation, a
+re-run with a different password, every privilege the application needs and every one it
+must not have, and drops both however it exits. It never touches an existing database, an
+existing role or any developer data, and it skips cleanly when no PostgreSQL is running.
+
+It is not in the `Infra` CI job, which has no database. The `Server` job does have one, so
+wiring it there is a one-line addition whenever that is wanted.
 
 ## Preview against a real subscription
 
