@@ -25,6 +25,8 @@ server/
   tests/WeaponsOfOrder.Api.Tests/     API, account and configuration tests
   tests/WeaponsOfOrder.Combat.Tests/  Combat rules, against no host and no database
 art/                                  Shared art, aliased into the client as @art
+infra/azure/                          Staging infrastructure as Bicep — see its README
+scripts/                              Artifact build and deployment smoke test
 docker-compose.yml                    Local development PostgreSQL
 ```
 
@@ -145,8 +147,14 @@ show an "Open the captured link" action.
 
 Both exist **only** when the API runs in the Development environment, and
 `Auth:Development:ExposeNotifications` switches the endpoint off. A link is a bearer
-credential, so it is never written to a log in any environment; every environment other than
-Development drops the message and records only that it did.
+credential, so it is never written to a log in any environment.
+
+Deployed environments send real mail instead, through the provider named by the `Email`
+section of `appsettings.json` — Azure Communication Services in staging, authenticated as the
+host's managed identity so no provider key exists. With no provider configured, a message is
+dropped and only the fact that it was dropped is recorded; the public responses are identical
+either way, so nothing about the delivery path tells a caller whether an address has an
+account.
 
 `Auth:ClientBaseUrl` must be set to the absolute origin of the browser client — https, or
 http only for a loopback host. The application refuses to start without it. Account links are
@@ -243,6 +251,42 @@ so no API response is ever stored by the service worker, and no gameplay works o
 
 The service worker is disabled under `vite dev`. To check installability, run
 `pnpm --dir web build` then `pnpm --dir web preview`.
+
+## Deployment
+
+Deployed environments serve the whole game from **one origin**: ASP.NET Core hosts the built
+React client, the PWA files and `/api` from the same process, so there is no CORS
+configuration and no API base URL anywhere. Development gets the same topology through the
+Vite proxy.
+
+One command builds exactly what is deployed:
+
+```bash
+scripts/publish-artifact.sh
+```
+
+On Windows, where pnpm is reached through corepack:
+
+```bash
+PNPM='corepack pnpm@10.34.0' scripts/publish-artifact.sh
+```
+
+It builds the client into the API's `wwwroot`, publishes on top, and then asserts the result
+carries the game content and the PWA files and carries no local development configuration.
+Neither the client build output nor `artifacts/` is ever committed.
+
+The staging environment — Azure App Service, PostgreSQL Flexible Server, Application
+Insights, account email — is defined in [`infra/azure/`](infra/azure/README.md) and documented
+in [`AZURE_STAGING.md`](docs/deployment/AZURE_STAGING.md): how to provision it, what it costs,
+what the GitHub `staging` Environment needs, how migrations are applied, and how to tear it
+all down.
+
+[CI](.github/workflows/ci.yml) validates every pull request and deploys only after both
+validation jobs pass, on a push to `master` or a manual run. Migrations are applied by the
+deployment, never on application startup.
+
+**None of this affects running the game locally.** No Azure sign-in, no vault and no staging
+secret is needed for `dotnet run` and `pnpm dev`.
 
 The icons in `web/public/icons/` and `web/public/favicon.svg` are **neutral geometric
 placeholders**, not artwork. Replace them when a real mark exists.

@@ -8,6 +8,9 @@
 # Built React client copied into the API for single-origin hosting
 server/src/WeaponsOfOrder.Api/wwwroot/
 
+# Deployment artifacts produced by scripts/publish-artifact.sh
+artifacts/
+
 # Local environment overrides — never commit real credentials
 *.env
 .env.local

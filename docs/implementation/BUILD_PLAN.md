@@ -341,7 +341,7 @@ Recruitment, progression, specialisation names, armour items and combat remain o
 
 ## Task 6 - Army deployment + combat prototype
 
-**Status: THIS BRANCH / AWAITING CREATOR REVIEW**
+**Status: MERGED**
 
 ### Goal
 
@@ -415,6 +415,8 @@ harness, not roster content.
 
 ## Task 7 - Azure staging + deployment pipeline
 
+**Status: THIS BRANCH / AWAITING CREATOR REVIEW**
+
 ### Goal
 
 Make the proven Browser V1 local loop reproducibly deployable to a production-like staging environment.
@@ -445,6 +447,66 @@ Do not introduce Kubernetes, microservices or Redis.
 - database migration procedure is explicit/repeatable.
 
 ---
+
+### What this branch built
+
+- **`infra/azure/`**, the whole staging environment as Bicep: a resource group of its own, a
+  Linux App Service, a PostgreSQL Flexible Server 18, Application Insights over a
+  daily-capped Log Analytics workspace, Azure Communication Services for account email, and
+  the federated identity GitHub Actions deploys as. Every region, SKU, version and name is a
+  parameter. `infra/azure/bootstrap.sh` runs the whole thing, including the `what-if`, from
+  one command — it works in the Azure Portal's Cloud Shell, so reconstructing staging never
+  means clicking through the portal.
+- **one origin, one artifact.** `scripts/publish-artifact.sh` builds the client into the
+  API's `wwwroot` and publishes the application on top, then asserts the result carries the
+  assemblies, `server/content`, `index.html`, a hashed bundle, the manifest and the service
+  worker — and carries no `appsettings.Development.json` and no local environment file.
+  ASP.NET Core serves the client, the PWA files and `/api` from the same process, with SPA
+  fallback so `/battle` typed into the address bar reaches React rather than a 404, hashed
+  assets cached immutably for a year and `index.html`, the manifest and the worker not cached
+  at all. `web/dist`, the API's `wwwroot` and `artifacts/` stay uncommitted.
+- **the deployment stage on top of the existing CI.** A pull request validates and packages
+  and stops there. A push to master, or a manual run of a chosen ref, migrates the staging
+  database, deploys, and smoke-tests — and cannot start until both validation jobs and the
+  packaging job have passed. The deployment job has a concurrency group of its own with
+  cancellation disabled, so a second push cannot cancel a run midway through a migration.
+- **an explicit migration procedure.** `dotnet ef database update` from the deployment job,
+  never on application startup. The database is not open to the internet: the job opens a
+  rule for its own runner, migrates, and closes it again in a step that runs even when the
+  migration failed. A failed migration fails the run and the package is never deployed.
+- **two database roles.** Migrations run as the server administrator; the application connects
+  as `woo_app`, which can read and write the game's rows and cannot create, drop, alter or
+  truncate a table. `ALTER DEFAULT PRIVILEGES` covers whatever a future migration adds, and
+  the grants are re-applied after every migration anyway.
+- **no secret anywhere in the repository, and no Azure client secret at all.** GitHub Actions
+  authenticates by exchanging a short-lived OIDC token for a user-assigned identity whose
+  federated subject names the `staging` Environment, and whose permissions are Website
+  Contributor on one site plus a custom firewall-only role on one database server.
+- **the deployment half of AUTH_SECURITY.md**, which that document had left open: forwarded
+  headers first in the pipeline with `ForwardLimit = 1`, so the scheme and the caller's real
+  address are what the Secure cookie and the rate-limit partitions actually see, while a
+  client's own `X-Forwarded-For` is discarded; HSTS outside Development; and startup that
+  refuses to boot when `Auth:ClientBaseUrl` is not an https origin in a deployed environment.
+- **real account email in deployed environments** through Azure Communication Services on an
+  Azure-managed domain, authenticated as the site's managed identity so no provider key
+  exists. Confirmation and reset behaviour is unchanged, and the link — a single-use bearer
+  credential — still never reaches a log, and now never reaches telemetry either: a span
+  processor strips query strings before export, because `/confirm-email?token=…` is a request
+  this server answers.
+- **usable server telemetry** through the Azure Monitor OpenTelemetry distro rather than the
+  retired classic SDK, plus App Service platform and console logs routed to the same
+  workspace — which is how a container that exits before the application starts is
+  diagnosed at all.
+- **`docs/deployment/AZURE_STAGING.md`**: architecture, what costs money, provisioning,
+  the GitHub Environment's exact variables and secrets, the migration procedure, redeploy,
+  telemetry queries, browser verification, and a teardown path that says precisely what
+  deleting the resource group destroys.
+
+Local development is untouched. `dotnet run` and `pnpm dev` need no Azure sign-in, no vault
+and no staging secret, and the Development-only notification outbox remains Development-only.
+
+No gameplay was added. Runeforging, Runes, Aura, classes, recruitment, progression, rewards,
+PvP and battle persistence all remain out of scope.
 
 ## After Task 7
 

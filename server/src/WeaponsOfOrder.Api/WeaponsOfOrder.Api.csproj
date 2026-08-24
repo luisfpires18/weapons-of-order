@@ -12,6 +12,20 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Account email delivery in deployed environments. Authenticated with the App
+         Service managed identity where one is available, so no provider secret has to
+         exist; a connection string is accepted as a fallback. -->
+    <PackageReference Include="Azure.Communication.Email" />
+    <PackageReference Include="Azure.Identity" />
+    <!-- Application Insights through the current OpenTelemetry-based distro rather than
+         the legacy Microsoft.ApplicationInsights.AspNetCore SDK. -->
+    <PackageReference Include="Azure.Monitor.OpenTelemetry.AspNetCore" />
+    <!-- Referenced directly because a span processor is registered against it; without
+         this the dependency would be an accident of the distro's own graph. -->
+    <PackageReference Include="OpenTelemetry" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -20,6 +34,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\WeaponsOfOrder.Infrastructure\WeaponsOfOrder.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Kept out of the deployment artifact. It holds the local development database
+         credentials, and a deployed environment never loads it anyway - shipping it would
+         only put a connection string somewhere it has no reason to be. It still copies to
+         the build output, so `dotnet run` is unaffected. -->
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
   <ItemGroup>

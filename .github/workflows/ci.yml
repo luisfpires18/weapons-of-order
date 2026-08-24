@@ -1,13 +1,21 @@
-﻿name: CI
+name: CI
 
 on:
   push:
     branches: [master]
   pull_request:
+  # Deploys the ref selected in the Actions UI, after that ref passes the same validation a
+  # merge would. Useful for trying a branch on real staging before merging it.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Only pull requests. A run on master can reach the database migration step, and cancelling
+  # that halfway leaves staging in a state nothing else knows about.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
   web:
@@ -115,3 +123,202 @@ jobs:
           --startup-project server/src/WeaponsOfOrder.Api
           --configuration Release
           --no-build
+
+  package:
+    name: Package
+    # Nothing is built for deployment until the code has passed both suites. This is also
+    # what makes the deployment job below unable to run on an unvalidated commit.
+    needs: [web, server]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: web/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      # The same script a developer runs. It publishes the application with the built
+      # client inside it and then asserts the result contains what a deployment needs and
+      # none of the local development configuration.
+      - name: Build the deployable artifact
+        run: scripts/publish-artifact.sh artifacts/staging
+
+      # Zipped here rather than by upload-artifact, because App Service is deployed a zip
+      # and re-zipping a downloaded directory would rebuild it differently.
+      - name: Package for App Service
+        run: |
+          cd artifacts/staging
+          zip --quiet --recurse-paths ../weapons-of-order.zip .
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: staging-app
+          path: artifacts/weapons-of-order.zip
+          retention-days: 7
+          if-no-files-found: error
+
+  deploy-staging:
+    name: Deploy staging
+    needs: package
+    # A pull request never reaches this. A push to master does, and so does a manual run of
+    # any ref — which still had to pass Web, Server and Package first.
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/master')
+      || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    # The federated credential is bound to this environment name. A job that does not
+    # declare it cannot obtain an Azure token at all.
+    environment:
+      name: staging
+      url: ${{ steps.target.outputs.base_url }}
+
+    # Never cancelled and never overlapping: a second deployment must not start while the
+    # first is midway through applying migrations.
+    concurrency:
+      group: weapons-of-order-staging
+      cancel-in-progress: false
+
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+      AZURE_POSTGRES_SERVER: ${{ vars.AZURE_POSTGRES_SERVER }}
+      POSTGRES_DATABASE: ${{ vars.POSTGRES_DATABASE }}
+      POSTGRES_ADMIN_LOGIN: ${{ vars.POSTGRES_ADMIN_LOGIN }}
+      POSTGRES_RUNTIME_LOGIN: ${{ vars.POSTGRES_RUNTIME_LOGIN }}
+      # The one firewall rule this run owns. Named after the run so a rule left behind by a
+      # cancelled job is identifiable, and so two runs could never fight over one name.
+      FIREWALL_RULE: gh-deploy-${{ github.run_id }}-${{ github.run_attempt }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - uses: actions/download-artifact@v6
+        with:
+          name: staging-app
+          path: artifacts
+
+      - name: Say what is being deployed
+        run: |
+          {
+            echo "### Staging deployment"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Trigger | \`${{ github.event_name }}\` |"
+            echo "| Ref | \`${{ github.ref_name }}\` |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # OIDC. GitHub mints a short-lived token for this run and Entra exchanges it; there is
+      # no Azure client secret in this repository.
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve the staging origin
+        id: target
+        run: |
+          host="$(az webapp show \
+            --name "$AZURE_WEBAPP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query defaultHostName --output tsv)"
+          echo "base_url=https://$host" >> "$GITHUB_OUTPUT"
+
+      # The database is not open to the internet. This runner's address is not known until
+      # now, so the rule is opened for this run and removed again below, even if the
+      # migration fails. The trade is deliberate: a few minutes of one address reaching the
+      # server, against either a self-hosted runner or leaving the server permanently open.
+      - name: Open the database to this runner
+        id: firewall
+        run: |
+          runner_ip="$(curl --fail --silent --show-error --max-time 15 https://api.ipify.org)"
+          echo "Opening $AZURE_POSTGRES_SERVER to ${runner_ip} as ${FIREWALL_RULE}"
+          az postgres flexible-server firewall-rule create \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_POSTGRES_SERVER" \
+            --rule-name "$FIREWALL_RULE" \
+            --start-ip-address "$runner_ip" \
+            --end-ip-address "$runner_ip" \
+            --output none
+
+      - name: Restore dotnet tools
+        run: dotnet tool restore
+
+      # Explicit, never on application startup. The exit code is what makes the rest of this
+      # job conditional: a failed migration stops here and staging keeps running the schema
+      # and the code it already had.
+      - name: Migrate the staging database
+        env:
+          ConnectionStrings__WeaponsOfOrder: >-
+            Host=${{ vars.AZURE_POSTGRES_SERVER }}.postgres.database.azure.com;Port=5432;Database=${{ vars.POSTGRES_DATABASE }};Username=${{ vars.POSTGRES_ADMIN_LOGIN }};Password=${{ secrets.POSTGRES_ADMIN_PASSWORD }};SSL Mode=VerifyFull
+        run: >-
+          dotnet ef database update
+          --project server/src/WeaponsOfOrder.Infrastructure
+          --startup-project server/src/WeaponsOfOrder.Api
+          --configuration Release
+
+      # Idempotent. ALTER DEFAULT PRIVILEGES already covers a table a migration just added,
+      # so this is the belt to that pair of braces: it costs a second and removes the class
+      # of failure where staging boots and then cannot read its own new table.
+      - name: Grant the runtime role what the new schema holds
+        env:
+          PGPASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+        run: >-
+          psql
+          "host=${AZURE_POSTGRES_SERVER}.postgres.database.azure.com port=5432
+          dbname=${POSTGRES_DATABASE} user=${POSTGRES_ADMIN_LOGIN} sslmode=verify-full"
+          --set=ON_ERROR_STOP=1
+          --set=runtime_role="${POSTGRES_RUNTIME_LOGIN}"
+          --set=admin_role="${POSTGRES_ADMIN_LOGIN}"
+          --file infra/azure/database/grant-runtime-role.sql
+
+      # always(), so a failed migration does not leave the server reachable from an address
+      # nobody is watching any more.
+      - name: Close the database again
+        if: always() && steps.firewall.outcome == 'success'
+        run: |
+          az postgres flexible-server firewall-rule delete \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_POSTGRES_SERVER" \
+            --rule-name "$FIREWALL_RULE" \
+            --yes --output none
+
+      - name: Deploy to App Service
+        run: |
+          az webapp deploy \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_WEBAPP_NAME" \
+            --src-path artifacts/weapons-of-order.zip \
+            --type zip \
+            --output none
+
+      # Azure accepting the package is not evidence the game is running. This is.
+      - name: Smoke test the deployment
+        env:
+          STAGING_BASE_URL: ${{ steps.target.outputs.base_url }}
+        run: scripts/smoke-staging.sh "$STAGING_BASE_URL"
+
+      - name: Record the result
+        if: always()
+        run: echo "| Staging | ${{ steps.target.outputs.base_url }} |" >> "$GITHUB_STEP_SUMMARY"

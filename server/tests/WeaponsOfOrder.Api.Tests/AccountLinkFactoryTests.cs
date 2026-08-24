@@ -118,8 +118,30 @@ public sealed class AuthOptionsValidatorTests
         Assert.Contains("ClientBaseUrl", result.FailureMessage, StringComparison.Ordinal);
     }
 
-    private static ValidateOptionsResult Validate(string? clientBaseUrl)
-        => new AuthOptionsValidator().Validate(name: null, new AuthOptions { ClientBaseUrl = clientBaseUrl });
+    [Fact]
+    public void Loopback_http_is_accepted_only_in_development()
+    {
+        Assert.True(Validate("http://localhost:1337", "Development").Succeeded);
+    }
+
+    [Theory]
+    [InlineData("Staging")]
+    [InlineData("Production")]
+    public void A_deployed_environment_refuses_a_loopback_http_origin(string environmentName)
+    {
+        // Otherwise a deployment inheriting the development default would mail every player
+        // a confirmation link pointing at their own machine, over plain http.
+        var result = Validate("http://localhost:1337", environmentName);
+
+        Assert.True(result.Failed);
+        Assert.Contains("https", result.FailureMessage, StringComparison.Ordinal);
+    }
+
+    private static ValidateOptionsResult Validate(
+        string? clientBaseUrl,
+        string environmentName = "Production")
+        => new AuthOptionsValidator(new StubHostEnvironment(environmentName))
+            .Validate(name: null, new AuthOptions { ClientBaseUrl = clientBaseUrl });
 }
 
 public sealed class MissingClientOriginTests
