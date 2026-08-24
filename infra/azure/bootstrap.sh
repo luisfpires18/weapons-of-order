@@ -30,6 +30,12 @@ readonly LOCATION="${WOO_LOCATION:-westeurope}"
 # leave the database reachable from an address nobody is watching.
 readonly BOOTSTRAP_RULE="bootstrap-$(date +%s)"
 
+# Parsing for the Azure CLI listings below. Kept in its own file because Azure changes the
+# shape of that output, and a check that reads it has to be verifiable without an Azure
+# subscription: see lib/az-output.test.sh.
+# shellcheck source=./lib/az-output.sh
+. "$ROOT/infra/azure/lib/az-output.sh"
+
 die() { printf '\nERROR: %s\n' "$1" >&2; exit 1; }
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
@@ -64,23 +70,40 @@ done
 
 step "Checking the runtime and database versions are available in $LOCATION"
 
-runtime="$(grep -oP "param linuxRuntimeStack = '\K[^']+" "$PARAMETERS" || echo 'DOTNETCORE|10.0')"
-if az webapp list-runtimes --os-type linux --output tsv | grep -qx "$runtime"; then
+# Both checks read what the repository actually asks for rather than a copy of it, so a
+# parameter change cannot leave the check verifying the previous value.
+runtime="$(az_bicepparam_value linuxRuntimeStack "$PARAMETERS")"
+[ -n "$runtime" ] || die "Could not read 'linuxRuntimeStack' from $PARAMETERS."
+
+# Captured once, then parsed. An empty answer means the CLI failed, which is a different
+# problem from the runtime being unavailable and must not be reported as one.
+runtimes="$(az webapp list-runtimes --os-type linux --output tsv)"
+[ -n "$runtimes" ] || die "'az webapp list-runtimes --os-type linux' returned nothing. Check the Azure CLI is signed in."
+
+if printf '%s\n' "$runtimes" | az_runtime_identifiers | az_contains_exactly "$runtime"; then
     printf '    App Service stack %s: available\n' "$runtime"
 else
     printf '\n    App Service stack %s was NOT found.\n' "$runtime" >&2
     printf '    Do NOT downgrade the repository target framework to match.\n' >&2
     printf '    Available .NET stacks:\n' >&2
-    az webapp list-runtimes --os-type linux --output tsv | grep '^DOTNETCORE' | sed 's/^/      /' >&2
+    printf '%s\n' "$runtimes" | az_runtime_identifiers | grep '^DOTNETCORE' | sed 's/^/      /' >&2
     die "Stop here and decide with the creator: a different region, or a self-contained publish."
 fi
 
-pg_version="$(grep -oP "param postgresVersion = '\K[^']+" "$PARAMETERS" || echo '18')"
-if az postgres flexible-server list-skus --location "$LOCATION" \
-        --query "[].supportedServerVersions[].name" --output tsv 2>/dev/null | grep -qx "$pg_version"; then
+pg_version="$(az_bicepparam_value postgresVersion "$PARAMETERS")"
+[ -n "$pg_version" ] || die "Could not read 'postgresVersion' from $PARAMETERS."
+
+pg_versions="$(az postgres flexible-server list-skus --location "$LOCATION" \
+    --query "[].supportedServerVersions[].name" --output tsv)"
+[ -n "$pg_versions" ] || die "'az postgres flexible-server list-skus --location $LOCATION' returned nothing. Check the region name and that the CLI is signed in."
+
+if printf '%s\n' "$pg_versions" | az_postgres_major_versions | az_contains_exactly "$pg_version"; then
     printf '    PostgreSQL %s: available\n' "$pg_version"
 else
     printf '\n    PostgreSQL %s was NOT found in %s.\n' "$pg_version" "$LOCATION" >&2
+    printf '    Do NOT change the major version to match; local development and CI run %s.\n' "$pg_version" >&2
+    printf '    Available major versions:\n' >&2
+    printf '%s\n' "$pg_versions" | az_postgres_major_versions | sort -u | sed 's/^/      /' >&2
     die "Stop here and decide with the creator: a different region, or a different major version."
 fi
 

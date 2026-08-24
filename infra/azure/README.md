@@ -17,6 +17,9 @@ modules/
 database/
   create-runtime-role.sql        creates the restricted application role — run once
   grant-runtime-role.sql         idempotent grants — re-run after every migration
+lib/
+  az-output.sh                   parsing for Azure CLI listings, used by bootstrap.sh
+  az-output.test.sh              its tests — no subscription, no network, creates nothing
 ```
 
 The full procedure, the GitHub Environment configuration and the teardown path are in
@@ -33,6 +36,15 @@ az bicep build --file infra/azure/main.bicep --stdout > /dev/null
 
 ```bash
 WOO_PG_ADMIN_PASSWORD=x WOO_PG_APP_PASSWORD=y az bicep build-params --file infra/azure/main.bicepparam --stdout > /dev/null
+```
+
+`bootstrap.sh` refuses to provision unless the App Service stack and the PostgreSQL major
+version it reads out of `main.bicepparam` are actually offered in the region. Those checks
+read Azure CLI listings, whose column shape has changed before and will change again, so the
+parsing lives in `lib/az-output.sh` and is tested against recorded output from both shapes:
+
+```bash
+infra/azure/lib/az-output.test.sh
 ```
 
 ## Preview against a real subscription

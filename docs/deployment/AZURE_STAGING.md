@@ -151,12 +151,18 @@ az provider register --namespace Microsoft.ManagedIdentity --wait
 Do not assume. The stack list and the supported PostgreSQL versions both move.
 
 ```bash
-az webapp list-runtimes --os-type linux --query "[?starts_with(@, 'DOTNETCORE')]"
+az webapp list-runtimes --os-type linux --output tsv | cut -f1 | grep '^DOTNETCORE'
 ```
 
 ```bash
-az postgres flexible-server list-skus --location westeurope --query "[0].supportedServerVersions[].name"
+az postgres flexible-server list-skus --location westeurope --query "[].supportedServerVersions[].name" --output tsv | sort -u
 ```
+
+Read the **first column only**. `az webapp list-runtimes` has answered a bare list of
+identifiers and now answers a row per runtime with the identifier first and descriptive
+columns after it, so a check written against the whole line reports that .NET 10 is missing
+while Azure is listing it. `bootstrap.sh` reads the first field for that reason;
+`infra/azure/lib/az-output.test.sh` covers both shapes without needing a subscription.
 
 If .NET 10 is genuinely absent from the App Service stack list, **do not downgrade the
 repository's target framework.** Publish self-contained instead: build with
