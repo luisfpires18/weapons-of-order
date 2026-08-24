@@ -148,16 +148,16 @@ subscription_id="$(read_output subscriptionId)"
 
 close_firewall() {
     az postgres flexible-server firewall-rule delete \
-        --resource-group "$resource_group" --name "$db_server" \
-        --rule-name "$BOOTSTRAP_RULE" --yes --output none 2>/dev/null || true
+        --resource-group "$resource_group" --server-name "$db_server" \
+        --name "$BOOTSTRAP_RULE" --yes --output none 2>/dev/null || true
 }
 trap close_firewall EXIT
 
 step "Creating the application's restricted database role"
 my_ip="$(curl --fail --silent --show-error --max-time 15 https://api.ipify.org)"
 az postgres flexible-server firewall-rule create \
-    --resource-group "$resource_group" --name "$db_server" \
-    --rule-name "$BOOTSTRAP_RULE" \
+    --resource-group "$resource_group" --server-name "$db_server" \
+    --name "$BOOTSTRAP_RULE" \
     --start-ip-address "$my_ip" --end-ip-address "$my_ip" \
     --output none
 

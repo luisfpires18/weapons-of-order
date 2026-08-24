@@ -20,6 +20,7 @@ database/
 lib/
   az-output.sh                   parsing for Azure CLI listings, used by bootstrap.sh
   az-output.test.sh              its tests — no subscription, no network, creates nothing
+  az-cli-syntax.test.sh          static check on the Azure CLI commands this repo runs
 ```
 
 The full procedure, the GitHub Environment configuration and the teardown path are in
@@ -46,6 +47,20 @@ parsing lives in `lib/az-output.sh` and is tested against recorded output from b
 ```bash
 infra/azure/lib/az-output.test.sh
 ```
+
+A second check reads the `az postgres flexible-server firewall-rule` commands out of the
+scripts, the workflow and the documented manual steps, and fails if any of them names the
+server with `--name` or the rule with `--rule-name`. That is not a hypothetical: the CLI takes
+`--server-name` for the server and `--name` for the rule, the repository had both wrong, and
+nothing caught it until a real provisioning run reached the database-role step. A wrong flag
+is not a syntax error, so `bash -n` will never see it.
+
+```bash
+infra/azure/lib/az-cli-syntax.test.sh
+```
+
+Both run in CI's `Infra` job, which the packaging job depends on — so a broken provisioning
+script cannot reach a deployment.
 
 ## Preview against a real subscription
 

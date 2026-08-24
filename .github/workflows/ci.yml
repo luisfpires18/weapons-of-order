@@ -124,11 +124,45 @@ jobs:
           --configuration Release
           --no-build
 
+  infra:
+    name: Infra
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Neither of these needs an Azure subscription, a sign-in or a network, and neither
+      # creates anything. They exist because both provisioning bugs found so far were
+      # invisible to every check that existed: a runtime listing compared by whole line when
+      # the CLI started adding columns, and a firewall rule handed the server's flag. Both
+      # parse fine. Both only appeared partway through a real provisioning run.
+      - name: Azure CLI output parsing
+        run: infra/azure/lib/az-output.test.sh
+
+      - name: Azure CLI command syntax
+        run: infra/azure/lib/az-cli-syntax.test.sh
+
+      - name: Shell syntax
+        run: |
+          for script in $(git ls-files '*.sh'); do
+            bash -n "$script"
+          done
+
+      # Compiles and lints the whole template graph. No sign-in, nothing deployed.
+      - name: Bicep
+        run: |
+          az bicep install --only-show-errors
+          az bicep build --file infra/azure/main.bicep --stdout > /dev/null
+          # The two values are irrelevant and are generated rather than written down, so
+          # nothing here reads as a credential to a scanner or to a person.
+          export WOO_PG_ADMIN_PASSWORD="$(uuidgen)"
+          export WOO_PG_APP_PASSWORD="$(uuidgen)"
+          az bicep build-params --file infra/azure/main.bicepparam --stdout > /dev/null
+
   package:
     name: Package
-    # Nothing is built for deployment until the code has passed both suites. This is also
-    # what makes the deployment job below unable to run on an unvalidated commit.
-    needs: [web, server]
+    # Nothing is built for deployment until the code has passed every validation suite. This
+    # is also what makes the deployment job below unable to run on an unvalidated commit.
+    needs: [web, server, infra]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -256,8 +290,8 @@ jobs:
           echo "Opening $AZURE_POSTGRES_SERVER to ${runner_ip} as ${FIREWALL_RULE}"
           az postgres flexible-server firewall-rule create \
             --resource-group "$AZURE_RESOURCE_GROUP" \
-            --name "$AZURE_POSTGRES_SERVER" \
-            --rule-name "$FIREWALL_RULE" \
+            --server-name "$AZURE_POSTGRES_SERVER" \
+            --name "$FIREWALL_RULE" \
             --start-ip-address "$runner_ip" \
             --end-ip-address "$runner_ip" \
             --output none
@@ -300,8 +334,8 @@ jobs:
         run: |
           az postgres flexible-server firewall-rule delete \
             --resource-group "$AZURE_RESOURCE_GROUP" \
-            --name "$AZURE_POSTGRES_SERVER" \
-            --rule-name "$FIREWALL_RULE" \
+            --server-name "$AZURE_POSTGRES_SERVER" \
+            --name "$FIREWALL_RULE" \
             --yes --output none
 
       - name: Deploy to App Service

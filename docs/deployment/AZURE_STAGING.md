@@ -219,7 +219,7 @@ environment that is not in Bicep. Run it once, from an address the server's fire
 add your own temporarily:
 
 ```bash
-az postgres flexible-server firewall-rule create --resource-group rg-weaponsoforder-staging --name <postgres server> --rule-name bootstrap --start-ip-address "$(curl -s https://api.ipify.org)" --end-ip-address "$(curl -s https://api.ipify.org)"
+az postgres flexible-server firewall-rule create --resource-group rg-weaponsoforder-staging --server-name <postgres server> --name bootstrap --start-ip-address "$(curl -s https://api.ipify.org)" --end-ip-address "$(curl -s https://api.ipify.org)"
 ```
 
 ```bash
@@ -227,7 +227,7 @@ psql "host=<postgres server>.postgres.database.azure.com port=5432 dbname=weapon
 ```
 
 ```bash
-az postgres flexible-server firewall-rule delete --resource-group rg-weaponsoforder-staging --name <postgres server> --rule-name bootstrap --yes
+az postgres flexible-server firewall-rule delete --resource-group rg-weaponsoforder-staging --server-name <postgres server> --name bootstrap --yes
 ```
 
 ### 8. Configure the GitHub `staging` Environment
