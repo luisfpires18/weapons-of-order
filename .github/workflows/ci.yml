@@ -112,6 +112,12 @@ jobs:
       - name: Azure CLI output parsing
         run: infra/azure/lib/az-output.test.sh
 
+      # The same class of invisible bug, one layer up. The federated credential's subject
+      # compiles whatever it says; a wrong one is only rejected by Entra, against a real
+      # token, as AADSTS700213 — which is what happened with the pre-immutable subject.
+      - name: GitHub OIDC subject
+        run: infra/azure/oidc-subject.test.sh
+
       - name: Shell syntax
         run: |
           for script in $(git ls-files '*.sh'); do

@@ -7,11 +7,12 @@ reconstructed by clicking through the portal.
 bootstrap.sh                     provisions the whole environment in one command
 main.bicep                       the whole environment, subscription-scoped
 main.bicepparam                  region, SKUs, versions and names — no secrets
+oidc-subject.test.sh             pins the GitHub federated subject — no subscription, no CLI
 modules/
   monitoring.bicep               Log Analytics + workspace-based Application Insights
   email.bicep                    Communication Services + an Azure-managed email domain
   app.bicep                      the Linux App Service that serves client, /api and the database
-  deployment-identity.bicep      the GitHub OIDC identity and its one scoped role
+  deployment-identity.bicep      the GitHub OIDC identity, its immutable subject and its one scoped role
 lib/
   az-output.sh                   parsing for Azure CLI listings, used by bootstrap.sh
   az-output.test.sh              its tests — no subscription, no network, creates nothing
@@ -47,7 +48,24 @@ whose column shape has changed before and will change again, so the parsing live
 infra/azure/lib/az-output.test.sh
 ```
 
-It runs in CI's `Infra` job, which the packaging job depends on — so a broken provisioning
+The federated credential has a failure of the same kind and is checked the same way. Its
+subject is compared literally by Entra against the `sub` of the token GitHub presents, which
+for this repository is the immutable form — owner and repository names each followed by their
+numeric id:
+
+```text
+repo:luisfpires18@29492601/weapons-of-order@1329180174:environment:staging
+```
+
+Nothing that runs before a deployment can tell a wrong subject from a right one: the template
+compiles either way and Entra only refuses against a real token, as `AADSTS700213`. So the
+subject is asserted as text instead, needing neither a subscription nor the Bicep CLI:
+
+```bash
+infra/azure/oidc-subject.test.sh
+```
+
+Both run in CI's `Infra` job, which the packaging job depends on — so a broken provisioning
 script cannot reach a deployment.
 
 ## Conventions

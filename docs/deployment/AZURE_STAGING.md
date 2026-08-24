@@ -277,6 +277,64 @@ There is no Azure client secret — deployment exchanges a short-lived GitHub OI
 is no database secret either, because there is no database server: the connection string is a
 file path, written into an application setting by Bicep.
 
+### The federated subject, and why it carries numbers
+
+Entra decides whether to exchange a GitHub token by comparing the token's `sub` claim against
+the subject configured on the federated credential. The comparison is literal. There is no
+pattern, no prefix match and no normalisation, so a subject that is *nearly* right is exactly
+as rejected as one that is entirely wrong:
+
+```text
+AADSTS700213: No matching federated identity record found for presented assertion subject
+```
+
+GitHub issues this repository's tokens with the **immutable** subject, which names the owner
+and the repository and then pins each to its numeric id:
+
+```text
+repo:luisfpires18@29492601/weapons-of-order@1329180174:environment:staging
+```
+
+The shape is `repo:<owner>@<ownerId>/<name>@<repositoryId>:environment:<environment>`. The
+older form, `repo:<owner>/<name>:environment:<environment>`, is **not** what this repository
+presents and must not be configured for it — it is what produced the AADSTS700213 above.
+
+The ids are the whole point of the change. A repository name and an account name can be
+renamed and the freed name claimed by somebody else, at which point a credential trusting the
+name alone would trust a repository the owner no longer controls. An id is never reissued.
+Neither id is a secret: GitHub serves both unauthenticated.
+
+`infra/azure/main.bicepparam` holds the four parts, and
+`infra/azure/modules/deployment-identity.bicep` assembles the subject from them rather than
+storing it as one opaque string, so the environment or the repository can be changed in one
+place. Read the ids back from GitHub with:
+
+```bash
+gh api users/luisfpires18 --jq .id
+```
+
+```bash
+gh api repos/luisfpires18/weapons-of-order --jq .id
+```
+
+The deployment prints the subject it configured, as the `deploymentFederatedSubject` output —
+compare it against the `sub` of a token the workflow actually presents rather than against
+what it ought to be:
+
+```bash
+az deployment sub show --name woo-staging --query properties.outputs.deploymentFederatedSubject.value --output tsv
+```
+
+A wrong subject is invisible to everything that runs before a deployment: the template
+compiles, `what-if` is clean, and the failure arrives only at `azure/login` against a real
+token. `infra/azure/oidc-subject.test.sh` is the guard, and runs in CI's `Infra` job — it
+needs no subscription and no sign-in, and it fails if the configured subject stops matching
+the immutable form or if the mutable form reappears anywhere in the repository.
+
+```bash
+infra/azure/oidc-subject.test.sh
+```
+
 ## What the deployment identity is allowed to do
 
 | Scope | Role | Why |

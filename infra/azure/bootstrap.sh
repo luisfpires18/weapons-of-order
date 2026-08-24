@@ -113,6 +113,7 @@ sender="$(read_output emailSenderAddress)"
 client_id="$(read_output deploymentIdentityClientId)"
 tenant_id="$(read_output tenantId)"
 subscription_id="$(read_output subscriptionId)"
+federated_subject="$(read_output deploymentFederatedSubject)"
 
 # --- What the creator still has to do ------------------------------------------------------
 
@@ -137,6 +138,15 @@ Variables (all five; none of them is a secret):
   AZURE_WEBAPP_NAME        $web_app
 
 Secrets: none.
+
+Not a variable, and printed only so it can be checked: the federated credential now trusts
+exactly this subject, and Entra compares it against a real token literally.
+
+  $federated_subject
+
+That is GitHub's immutable form -- owner and repository names each pinned to their numeric
+id. A deployment that fails sign-in with AADSTS700213 is saying the token it presented did
+not match this string.
 
 There is no Azure client secret: deployment exchanges a short-lived GitHub OIDC token for
 the identity above. There is no database secret either, because there is no database server.
