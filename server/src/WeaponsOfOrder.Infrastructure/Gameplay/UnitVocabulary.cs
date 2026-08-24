@@ -30,6 +30,21 @@ public enum ArmorClass
 }
 
 /// <summary>
+/// How heavy a weapon is to swing.
+/// </summary>
+/// <remarks>
+/// The weapon registry's three weights. Weight participates in the Attack Interval calculation
+/// alongside the Unit's base value and its armour; what each one is worth in seconds is
+/// configuration rather than something this enum decides.
+/// </remarks>
+public enum WeaponWeight
+{
+    Light = 0,
+    Medium = 1,
+    Heavy = 2,
+}
+
+/// <summary>
 /// Where a player-owned Unit came from.
 /// </summary>
 /// <remarks>

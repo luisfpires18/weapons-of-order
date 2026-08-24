@@ -18,10 +18,32 @@ internal sealed record UnitDefinition(
     int Tier,
     ArmorClass MaxArmor,
     bool Mounted,
-    bool Starter);
+    bool Starter,
+    UnitCombatProfile Combat);
 
-/// <summary>A weapon's structural metadata, parsed and ready to use.</summary>
-internal sealed record WeaponDefinition(string Type, string DisplayName, int SlotCost);
+/// <summary>
+/// A Unit's own contribution to its final combat stats.
+/// </summary>
+/// <remarks>
+/// Range and Movement Speed are absent by design: reach comes from the equipped weapon and speed
+/// from whether the Unit is Mounted. See <see cref="UnitCombatSettings"/>.
+/// </remarks>
+internal sealed record UnitCombatProfile(
+    int Hp,
+    int Power,
+    int Defense,
+    double AttackIntervalSeconds,
+    double CriticalChance);
+
+/// <summary>A weapon's structural and combat metadata, parsed and ready to use.</summary>
+internal sealed record WeaponDefinition(
+    string Type,
+    string DisplayName,
+    int SlotCost,
+    int Power,
+    double CriticalChance,
+    WeaponWeight Weight,
+    int Range);
 
 /// <summary>
 /// The Unit definitions currently authored, keyed for lookup.
@@ -49,7 +71,13 @@ internal sealed class UnitCatalogue
                 unit.Tier,
                 Enum.Parse<ArmorClass>(unit.MaxArmor, ignoreCase: true),
                 ContentFlag.Read(unit.Mounted),
-                ContentFlag.Read(unit.Starter))),
+                ContentFlag.Read(unit.Starter),
+                new UnitCombatProfile(
+                    unit.Combat!.Hp,
+                    unit.Combat.Power,
+                    unit.Combat.Defense,
+                    unit.Combat.AttackIntervalSeconds,
+                    unit.Combat.CriticalChance))),
         ];
 
         _byKey = Definitions.ToDictionary(definition => definition.Key, StringComparer.Ordinal);
@@ -86,7 +114,14 @@ internal sealed class WeaponCatalogue
 
     public WeaponCatalogue(IOptionsSnapshot<WeaponContentOptions> options)
         => _byType = options.Value.Weapons
-            .Select(weapon => new WeaponDefinition(weapon.Type.Trim(), weapon.DisplayName.Trim(), weapon.SlotCost))
+            .Select(weapon => new WeaponDefinition(
+                weapon.Type.Trim(),
+                weapon.DisplayName.Trim(),
+                weapon.SlotCost,
+                weapon.Power,
+                weapon.CriticalChance,
+                Enum.Parse<WeaponWeight>(weapon.Weight, ignoreCase: true),
+                weapon.Range))
             .ToDictionary(weapon => weapon.Type, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>

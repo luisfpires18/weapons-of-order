@@ -74,16 +74,29 @@ public sealed class UnitContentTests(PreparationApiFactory factory) : IClassFixt
     }
 
     [Fact]
-    public void Content_carries_no_class_specialisation_or_combat_stat_fields()
+    public void Content_carries_no_class_or_specialisation_fields()
     {
         // The definition shape is the guarantee. Canon derives the current class from
         // unit + loadout and the creator has not authored the mappings, so there is nowhere
         // for a placeholder class name to be stored even by accident.
+        //
+        // Combat is here from Task 6, which owns a Unit's contribution to its own combat stats.
+        // It is a Unit's base numbers and nothing else — no class, no specialisation, no level.
         var properties = typeof(UnitDefinitionSettings).GetProperties().Select(property => property.Name);
 
         Assert.Equal(
-            ["Key", "DisplayName", "Type", "Kingdom", "Tier", "MaxArmor", "Mounted", "Starter"],
+            ["Key", "DisplayName", "Type", "Kingdom", "Tier", "MaxArmor", "Mounted", "Starter", "Combat"],
             properties);
+    }
+
+    [Fact]
+    public void Combat_content_is_the_six_universal_stats_minus_the_two_that_are_derived()
+    {
+        // Range comes from the equipped weapon and Movement Speed from Mounted, so neither is
+        // authored per Unit. Anything else appearing here would be a stat canon does not have.
+        var properties = typeof(UnitCombatSettings).GetProperties().Select(property => property.Name);
+
+        Assert.Equal(["Hp", "Power", "Defense", "AttackIntervalSeconds", "CriticalChance"], properties);
     }
 }
 

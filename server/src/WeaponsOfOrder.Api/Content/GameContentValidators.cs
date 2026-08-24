@@ -116,6 +116,8 @@ internal sealed class UnitContentValidator : IValidateOptions<UnitContentOptions
                 failures.Add($"{label} has Starter '{definition.Starter}'. It must be true, false or absent.");
             }
 
+            failures.AddRange(CombatFailures(label, definition.Combat));
+
             if (!string.IsNullOrWhiteSpace(definition.Kingdom) && !kingdoms.Contains(definition.Kingdom))
             {
                 failures.Add(
@@ -131,6 +133,52 @@ internal sealed class UnitContentValidator : IValidateOptions<UnitContentOptions
         return failures.Count == 0
             ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(failures);
+    }
+
+    /// <summary>
+    /// What is wrong with a Unit's combat stats, if anything.
+    /// </summary>
+    /// <remarks>
+    /// The values are balance and are meant to be edited freely; what is checked is only that a
+    /// battle could be fought with them. A Unit with no HP, or one whose Attack Interval is zero,
+    /// is not a strong Unit or a fast one — it is a Unit the simulator would refuse.
+    /// </remarks>
+    private static IEnumerable<string> CombatFailures(string label, UnitCombatSettings? combat)
+    {
+        if (combat is null)
+        {
+            yield return $"{label} needs a Combat block. A Unit with no combat stats cannot be fielded.";
+            yield break;
+        }
+
+        if (combat.Hp < 1)
+        {
+            yield return $"{label} has Combat.Hp {combat.Hp}. A Unit must start a battle alive.";
+        }
+
+        if (combat.Power < 0)
+        {
+            yield return $"{label} has a negative Combat.Power.";
+        }
+
+        if (combat.Defense < 0)
+        {
+            yield return $"{label} has a negative Combat.Defense.";
+        }
+
+        if (combat.AttackIntervalSeconds <= 0)
+        {
+            yield return
+                $"{label} has Combat.AttackIntervalSeconds {combat.AttackIntervalSeconds}. It is the "
+                + "time between attacks and must be greater than zero.";
+        }
+
+        if (combat.CriticalChance is < 0 or > 1)
+        {
+            yield return
+                $"{label} has Combat.CriticalChance {combat.CriticalChance}. It is a probability, "
+                + "from 0 to 1.";
+        }
     }
 }
 
@@ -170,6 +218,31 @@ internal sealed class WeaponContentValidator : IValidateOptions<WeaponContentOpt
                 failures.Add(
                     $"{label} has SlotCost {weapon.SlotCost}. A weapon consumes 1 or "
                     + $"{Loadout.WeaponSlots} of a Unit's {Loadout.WeaponSlots} weapon slots.");
+            }
+
+            if (weapon.Power < 0)
+            {
+                failures.Add($"{label} has a negative Power.");
+            }
+
+            if (weapon.CriticalChance is < 0 or > 1)
+            {
+                failures.Add(
+                    $"{label} has CriticalChance {weapon.CriticalChance}. It is a probability, from 0 to 1.");
+            }
+
+            if (!Enum.TryParse<WeaponWeight>(weapon.Weight, ignoreCase: true, out _))
+            {
+                failures.Add(
+                    $"{label} has Weight '{weapon.Weight}'. It must be one of: "
+                    + $"{string.Join(", ", Enum.GetNames<WeaponWeight>())}.");
+            }
+
+            if (weapon.Range < 1)
+            {
+                failures.Add(
+                    $"{label} has Range {weapon.Range}. Range is measured in hexes and an ordinary "
+                    + "melee weapon reaches 1.");
             }
         }
 

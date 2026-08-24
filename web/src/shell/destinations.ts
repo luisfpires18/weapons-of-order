@@ -8,6 +8,8 @@ export const INVENTORY_PATH = "/inventory";
 
 export const UNITS_PATH = "/units";
 
+export const BATTLE_PATH = "/battle";
+
 export type ShellDestination = {
   /** The route this destination owns. One destination, one path. */
   path: string;
@@ -18,33 +20,52 @@ export type ShellDestination = {
 /**
  * The game destinations the primary navigation offers, in the order it offers them.
  *
- * Four, because four exist. Battle is Task 6 and is absent rather than present-and-disabled: a
- * control that cannot be used is worse than no control, and a menu padded out with future
- * systems misrepresents what the game can do.
+ * Five, because five exist. The order is the order the loop runs in — make something, see what you
+ * own, give it to somebody, send them out — rather than alphabetical.
  *
- * The order is the order the loop runs in — make something, see what you own, give it to
- * somebody — rather than alphabetical.
- *
- * Adding a destination later means adding an entry here and a route in `App.tsx`. Nothing in
- * the shell counts these or assumes any particular number, though the mobile bar is now at the
- * four-or-five destinations the layout document asks it to stay within; a fifth game
- * destination is where the rest start moving behind a More surface.
+ * Adding a destination later means adding an entry here and a route in `App.tsx`, plus deciding
+ * whether it belongs on the phone's bottom bar or behind More.
  */
 export const GAME_DESTINATIONS: readonly ShellDestination[] = [
   { path: WORLD_PATH, label: "World" },
   { path: FORGE_PATH, label: "Forge" },
   { path: INVENTORY_PATH, label: "Inventory" },
   { path: UNITS_PATH, label: "Units" },
+  { path: BATTLE_PATH, label: "Battle" },
 ];
 
 /**
- * Kept apart from the game destinations because it is not one, and because it stays put as
- * that list grows: the navigation pins it to the end on desktop.
+ * Kept apart from the game destinations because it is not one, and because it stays put as that
+ * list grows: the navigation pins it to the end on desktop.
  */
 export const ACCOUNT_DESTINATION: ShellDestination = { path: ACCOUNT_PATH, label: "Account" };
 
 export const SHELL_DESTINATIONS: readonly ShellDestination[] = [
   ...GAME_DESTINATIONS,
+  ACCOUNT_DESTINATION,
+];
+
+/**
+ * What the phone's bottom bar carries.
+ *
+ * Four, plus More. The layout document asks the bar to stay within four or five destinations and
+ * says that beyond that the rest should move behind a More surface — Battle is the destination
+ * that reached it, so this is where the split happens. Desktop has the width for all of them and
+ * keeps the full column.
+ *
+ * The four here are the ones a player returns to: the world, the forge, the units they equip, and
+ * the battle they send them into.
+ */
+export const BAR_DESTINATIONS: readonly ShellDestination[] = [
+  { path: WORLD_PATH, label: "World" },
+  { path: FORGE_PATH, label: "Forge" },
+  { path: UNITS_PATH, label: "Units" },
+  { path: BATTLE_PATH, label: "Battle" },
+];
+
+/** What More holds on a phone. Reachable in one more tap, and never a dead end. */
+export const MORE_DESTINATIONS: readonly ShellDestination[] = [
+  { path: INVENTORY_PATH, label: "Inventory" },
   ACCOUNT_DESTINATION,
 ];
 

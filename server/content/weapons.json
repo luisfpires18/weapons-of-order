@@ -1,6 +1,7 @@
 {
   "//WeaponContent": [
-    "Structural weapon metadata the preparation system needs, kept out of API and UI code.",
+    "Structural weapon metadata the preparation system needs, plus the combat metadata the",
+    "weapon registry names, kept out of API and UI code.",
     "",
     "'Type' must be a weapon type the canonical registry names",
     "(.claude/skills/units/references/weapon-registry.md). 'SlotCost' is the canonical wield",
@@ -11,8 +12,12 @@
     "as authored data, and guessing one would invent canon. Add the entry when the weapon",
     "becomes real.",
     "",
-    "No Power, Crit, Weight or Range here. Those are combat metadata that Task 6 and the",
-    "balance pass own; the preparation system does not read them.",
+    "'Range' follows the registry's v1 defaults: 1 hex for an ordinary melee weapon and 3 for",
+    "the Ranged Weapons family. A Unit's reach is its weapon's, never its display name's.",
+    "",
+    "TEMPORARY PROTOTYPE VALUES, NOT CANON: 'Power', 'CriticalChance' and 'Weight'. The",
+    "registry says weapon Power should start low and leaves the exact budgets and the",
+    "Light/Medium/Heavy assignment per weapon type as balance work.",
     "",
     "See content/README.md."
   ],
@@ -21,7 +26,11 @@
       {
         "Type": "Sword",
         "DisplayName": "Sword",
-        "SlotCost": 1
+        "SlotCost": 1,
+        "Power": 4,
+        "CriticalChance": 0.05,
+        "Weight": "Light",
+        "Range": 1
       }
     ]
   }

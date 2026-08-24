@@ -46,6 +46,10 @@ public sealed class TwoSlotWeaponApiFactory : PreparationApiFactory
         new("WeaponContent:Weapons:1:Type", WeaponType),
         new("WeaponContent:Weapons:1:DisplayName", "Test Two-Slot Weapon"),
         new("WeaponContent:Weapons:1:SlotCost", "2"),
+        new("WeaponContent:Weapons:1:Power", "6"),
+        new("WeaponContent:Weapons:1:CriticalChance", "0.05"),
+        new("WeaponContent:Weapons:1:Weight", "Heavy"),
+        new("WeaponContent:Weapons:1:Range", "1"),
     ];
 }
 

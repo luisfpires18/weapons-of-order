@@ -1,16 +1,16 @@
 import { Link } from "react-router";
 import { useSession } from "@/auth/useSession";
 import { INLINE_LINK_CLASSES } from "@/components/auth/FormControls";
-import { FORGE_PATH, INVENTORY_PATH, UNITS_PATH } from "@/shell/destinations";
+import { BATTLE_PATH, FORGE_PATH, INVENTORY_PATH, UNITS_PATH } from "@/shell/destinations";
 import { Fact, FactList, ShellScreen } from "@/shell/ShellScreen";
 
 /**
  * Where a signed-in player lands.
  *
- * Still short, and still only about what is actually there. Forging, an inventory and a roster
- * are real and are named; the battlefield is not, and is described as absent rather than
- * dressed up with resource counters, an army summary or an activity feed. A screen that lies
- * about what exists is worse than a screen that says plainly what does.
+ * Still short, and still only about what is actually there. Forging, an inventory, a roster and
+ * now a battlefield are real and are named, in the order the loop runs in. What is still missing
+ * is said plainly rather than dressed up with resource counters, an army summary or an activity
+ * feed — a screen that lies about what exists is worse than one that says what does.
  */
 export function WorldScreen() {
   const { data } = useSession();
@@ -31,8 +31,12 @@ export function WorldScreen() {
           <Link to={UNITS_PATH} className={INLINE_LINK_CLASSES}>
             units
           </Link>
-          , and it stays there. There is nowhere to take them yet: the battlefield appears in the
-          navigation when it is ready to be used.
+          , and it stays there. Then take them to the{" "}
+          <Link to={BATTLE_PATH} className={INLINE_LINK_CLASSES}>
+            battlefield
+          </Link>
+          , put them where you want them to stand, and watch it resolve. The opposition there is a
+          training stand-in until there is somebody real to fight.
         </p>
 
         <FactList>

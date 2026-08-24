@@ -86,6 +86,55 @@ namespace WeaponsOfOrder.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("WeaponsOfOrder.Infrastructure.Gameplay.ArmyPlacement", b =>
+                {
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PlayerUnitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("HexColumn")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("HexRow")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ReserveOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("OwnerUserId", "PlayerUnitId");
+
+                    b.HasIndex("OwnerUserId", "ReserveOrder")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ArmyPlacements_OwnerUserId_ReserveOrder")
+                        .HasFilter("\"Role\" = 'Reserve'");
+
+                    b.HasIndex("PlayerUnitId", "OwnerUserId");
+
+                    b.HasIndex("OwnerUserId", "HexColumn", "HexRow")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ArmyPlacements_OwnerUserId_Hex")
+                        .HasFilter("\"Role\" = 'Active'");
+
+                    b.ToTable("ArmyPlacements", t =>
+                        {
+                            t.HasCheckConstraint("CK_ArmyPlacements_OwnHalf", "\"HexColumn\" IS NULL\nOR (\"HexColumn\" >= 0 AND \"HexColumn\" < 4\n    AND \"HexRow\" >= 0 AND \"HexRow\" < 7)");
+
+                            t.HasCheckConstraint("CK_ArmyPlacements_ReserveOrder", "\"ReserveOrder\" IS NULL OR \"ReserveOrder\" >= 0");
+
+                            t.HasCheckConstraint("CK_ArmyPlacements_RoleShape", "(\"Role\" = 'Active' AND \"HexColumn\" IS NOT NULL AND \"HexRow\" IS NOT NULL AND \"ReserveOrder\" IS NULL)\nOR (\"Role\" = 'Reserve' AND \"HexColumn\" IS NULL AND \"HexRow\" IS NULL AND \"ReserveOrder\" IS NOT NULL)");
+                        });
+                });
+
             modelBuilder.Entity("WeaponsOfOrder.Infrastructure.Gameplay.EquippedWeapon", b =>
                 {
                     b.Property<Guid>("ItemId")
@@ -418,6 +467,16 @@ namespace WeaponsOfOrder.Infrastructure.Persistence.Migrations
                     b.HasOne("WeaponsOfOrder.Infrastructure.Identity.WeaponsOfOrderUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WeaponsOfOrder.Infrastructure.Gameplay.ArmyPlacement", b =>
+                {
+                    b.HasOne("WeaponsOfOrder.Infrastructure.Gameplay.PlayerUnit", null)
+                        .WithMany()
+                        .HasForeignKey("PlayerUnitId", "OwnerUserId")
+                        .HasPrincipalKey("Id", "OwnerUserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

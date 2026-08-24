@@ -10,4 +10,15 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 
+  <!--
+    For the battlefield's dimensions, and for nothing else. The deployment table checks that a
+    placement is inside the player's own half, and writing 4 and 7 into that constraint by hand
+    would create a second place for the board's size to be true.
+
+    The dependency only goes this way. The combat project references nothing.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\WeaponsOfOrder.Combat\WeaponsOfOrder.Combat.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -305,7 +305,7 @@ This is the first proof that the application foundation supports actual gameplay
 
 ## Task 5 - Inventory + Units + equipment
 
-**Status: THIS BRANCH / AWAITING CREATOR REVIEW**
+**Status: MERGED**
 
 ### Goal
 
@@ -340,6 +340,8 @@ Recruitment, progression, specialisation names, armour items and combat remain o
 ---
 
 ## Task 6 - Army deployment + combat prototype
+
+**Status: THIS BRANCH / AWAITING CREATOR REVIEW**
 
 ### Goal
 
@@ -382,6 +384,32 @@ Once those measurements exist, give the creator a concrete asset specification f
 A player can locally move through the currently implemented preparation loop into a deterministic battle, watch it resolve, and reach a result without any simulation path being able to run forever.
 
 At this point we have enough actual game to judge whether Forge -> equipment -> deployment -> combat is enjoyable before investing in production hosting work.
+
+### What this branch built
+
+- **`server/src/WeaponsOfOrder.Combat`**, a deterministic simulator with no package or project
+  references at all: no ASP.NET, no EF Core, no Npgsql, no Identity, no HTTP. It takes a
+  `BattleInput` and returns a `BattleResult` with a complete event log, and reads nothing else —
+  no clock, no ambient randomness. The same input replays event for event.
+- the locked battlefield: an 8x7 offset hex grid, a 4x7 deployment half per side, one Unit per
+  hex, occupied hexes impassable, and body blocking as a real consequence.
+- the locked v1 combat rules: the Power -> coefficient -> critical -> Defense -> round -> minimum
+  pipeline, the single 0-100 Energy bar with a Heavy attack at full, nearest-then-least-armoured
+  targeting, one-hex-at-a-time pursuit, ordered reserves with assigned rear-column entry hexes and
+  no fallback, and both finite guards ending an unresolved battle as a Draw without killing
+  survivors.
+- same-timestamp attacks resolved as one batch from the pre-batch state, so a Unit killed at time
+  T still lands the attack it had committed for time T and a mutual last kill is a Draw.
+- one persisted army per account, held up by database constraints rather than by
+  look-before-you-write checks, and a thin authenticated battle API over the simulator.
+- `/battle` behind the session guard: an accessible DOM hex grid to deploy on, and a PixiJS 8
+  surface that plays the server's event log back with pause, replay and speed.
+- the first complete local loop: forge a sword, equip it, deploy an army, fight, and watch it
+  resolve.
+
+Runeforging, Runes, Aura, classes, recruitment, progression, rewards, PvP, armour and battle
+persistence remain out of scope. The opposition is a clearly labelled configuration-only training
+harness, not roster content.
 
 ---
 

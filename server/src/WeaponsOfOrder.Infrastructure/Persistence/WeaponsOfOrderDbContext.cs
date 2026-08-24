@@ -39,6 +39,8 @@ public sealed class WeaponsOfOrderDbContext(DbContextOptions<WeaponsOfOrderDbCon
 
     public DbSet<EquippedWeapon> EquippedWeapons => Set<EquippedWeapon>();
 
+    public DbSet<ArmyPlacement> ArmyPlacements => Set<ArmyPlacement>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
