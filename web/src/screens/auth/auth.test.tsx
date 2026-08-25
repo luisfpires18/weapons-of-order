@@ -6,6 +6,19 @@ import { MINIMUM_PASSWORD_LENGTH } from "@/auth/policy";
 import type { ApiStub, FetchMock } from "@/testing/renderApp";
 import { renderApp, SIGNED_OUT } from "@/testing/renderApp";
 
+/**
+ * Synthetic form input, constructed rather than written out.
+ *
+ * These are keystrokes a test types into a field, not credentials — nothing here opens
+ * anything. Building them from the policy constant says so plainly: the accepted one is
+ * exactly the shortest string the rule allows, which is the fact these tests are about, and
+ * the rejected one differs from it, which is the only property the wrong-password flow needs.
+ * A literal in a `password:` position reads as a credential to anyone skimming the file, and
+ * to the secret scanner that runs over it.
+ */
+const ACCEPTED_PASSWORD_INPUT = "a".repeat(MINIMUM_PASSWORD_LENGTH);
+const UNMATCHED_PASSWORD_INPUT = "z".repeat(MINIMUM_PASSWORD_LENGTH + 1);
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -36,8 +49,8 @@ describe("registration", () => {
 
     await user.type(await screen.findByLabelText("Username"), "Unreally");
     await user.type(screen.getByLabelText("Email"), "unreally@weaponsoforder.test");
-    await user.type(screen.getByLabelText("Password"), "aaaaaa");
-    await user.type(screen.getByLabelText("Confirm password"), "aaaaaa");
+    await user.type(screen.getByLabelText("Password"), ACCEPTED_PASSWORD_INPUT);
+    await user.type(screen.getByLabelText("Confirm password"), ACCEPTED_PASSWORD_INPUT);
     await user.click(screen.getByRole("button", { name: "Create account" }));
 
     await waitFor(() => expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Check your email"));
@@ -45,7 +58,7 @@ describe("registration", () => {
     expect(bodyOf(fetchMock, "/api/auth/register")).toEqual({
       username: "Unreally",
       email: "unreally@weaponsoforder.test",
-      password: "aaaaaa",
+      password: ACCEPTED_PASSWORD_INPUT,
     });
   });
 
@@ -67,8 +80,8 @@ describe("registration", () => {
     const username = await screen.findByLabelText("Username");
     await user.type(username, "Unreally");
     await user.type(screen.getByLabelText("Email"), "unreally@weaponsoforder.test");
-    await user.type(screen.getByLabelText("Password"), "aaaaaa");
-    await user.type(screen.getByLabelText("Confirm password"), "aaaaaa");
+    await user.type(screen.getByLabelText("Password"), ACCEPTED_PASSWORD_INPUT);
+    await user.type(screen.getByLabelText("Confirm password"), ACCEPTED_PASSWORD_INPUT);
     await user.click(screen.getByRole("button", { name: "Create account" }));
 
     const message = await screen.findByText("That username is already in use.");
@@ -90,8 +103,8 @@ describe("registration", () => {
 
     await user.type(await screen.findByLabelText("Username"), "un@really");
     await user.type(screen.getByLabelText("Email"), "unreally@weaponsoforder.test");
-    await user.type(screen.getByLabelText("Password"), "aaaaaa");
-    await user.type(screen.getByLabelText("Confirm password"), "aaaaaa");
+    await user.type(screen.getByLabelText("Password"), ACCEPTED_PASSWORD_INPUT);
+    await user.type(screen.getByLabelText("Confirm password"), ACCEPTED_PASSWORD_INPUT);
     await user.click(screen.getByRole("button", { name: "Create account" }));
 
     expect(await screen.findByText(/cannot contain @/)).toBeTruthy();
@@ -131,12 +144,16 @@ describe("signing in", () => {
     const user = userEvent.setup();
 
     await user.type(await screen.findByLabelText("Username or email"), "Unreally");
-    await user.type(screen.getByLabelText("Password"), "aaaaaa");
+    await user.type(screen.getByLabelText("Password"), ACCEPTED_PASSWORD_INPUT);
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     const body = await waitFor(() => bodyOf(fetchMock, "/api/auth/login"));
 
-    expect(body).toEqual({ identifier: "Unreally", password: "aaaaaa", rememberMe: false });
+    expect(body).toEqual({
+      identifier: "Unreally",
+      password: ACCEPTED_PASSWORD_INPUT,
+      rememberMe: false,
+    });
     expect(body).not.toHaveProperty("email");
   });
 
@@ -145,7 +162,7 @@ describe("signing in", () => {
     const user = userEvent.setup();
 
     await user.type(await screen.findByLabelText("Username or email"), "smith@weaponsoforder.test");
-    await user.type(screen.getByLabelText("Password"), "aaaaaa");
+    await user.type(screen.getByLabelText("Password"), ACCEPTED_PASSWORD_INPUT);
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() =>
@@ -158,7 +175,7 @@ describe("signing in", () => {
     const user = userEvent.setup();
 
     await user.type(await screen.findByLabelText("Username or email"), "Unreally");
-    await user.type(screen.getByLabelText("Password"), "aaaaaa");
+    await user.type(screen.getByLabelText("Password"), ACCEPTED_PASSWORD_INPUT);
     await user.click(screen.getByLabelText("Keep me signed in"));
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
@@ -192,7 +209,7 @@ describe("signing in", () => {
     const user = userEvent.setup();
 
     await user.type(await screen.findByLabelText("Username or email"), "Unreally");
-    await user.type(screen.getByLabelText("Password"), "wrong-one");
+    await user.type(screen.getByLabelText("Password"), UNMATCHED_PASSWORD_INPUT);
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     const alert = await screen.findByRole("alert");
