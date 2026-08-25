@@ -44,14 +44,17 @@ internal sealed class AuthOptions
 }
 
 /// <summary>
-/// Length-first password policy. Composition rules are deliberately off: they push people
-/// towards predictable substitutions without adding meaningful entropy.
+/// Length is the only password rule. Composition requirements are deliberately off: they
+/// push people towards predictable substitutions without adding meaningful entropy, and the
+/// Browser V1 decision is a single rule a player can hold in their head — more than five
+/// characters, so a minimum length of six and nothing else. <c>aaaaaa</c> is a valid
+/// password, which is why <see cref="RequiredUniqueChars"/> is 1 rather than absent.
 /// </summary>
 internal sealed class PasswordPolicySettings
 {
-    public int RequiredLength { get; set; } = 12;
+    public int RequiredLength { get; set; } = 6;
 
-    public int RequiredUniqueChars { get; set; } = 4;
+    public int RequiredUniqueChars { get; set; } = 1;
 
     public bool RequireDigit { get; set; }
 

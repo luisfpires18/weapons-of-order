@@ -9,10 +9,32 @@ namespace WeaponsOfOrder.Api.Tests;
 /// </summary>
 internal static class TestAccounts
 {
-    /// <summary>Comfortably over the 12-character policy configured in appsettings.json.</summary>
+    /// <summary>Over the six-character policy configured in appsettings.json.</summary>
     public const string ValidPassword = "forge-anvil-ember-73";
 
+    /// <summary>The shortest password the policy accepts, and the shortest one it does not.</summary>
+    public const string ShortestValidPassword = "123456";
+
+    public const string TooShortPassword = "12345";
+
     public static string NewEmail(string label) => $"{label}-{Guid.CreateVersion7():n}@weaponsoforder.test";
+
+    /// <summary>
+    /// A unique player-selected name. Carries no <c>@</c>, which is the one structural rule
+    /// the login identifier depends on.
+    /// </summary>
+    public static string NewUsername(string label) => $"{label}-{Guid.CreateVersion7():n}";
+
+    /// <summary>
+    /// The username a helper mints for an address when the test's subject is something other
+    /// than the name. Reuses the address's local part, which is already unique per test and
+    /// contains no <c>@</c>.
+    /// </summary>
+    public static string UsernameFor(string email)
+    {
+        var at = email.IndexOf('@', StringComparison.Ordinal);
+        return at < 0 ? email : email[..at];
+    }
 
     /// <summary>
     /// Buffers the body first so a test can assert on several parts of one response.

@@ -19,6 +19,7 @@ function LocationProbe() {
 
 export const TEST_ACCOUNT = {
   id: "0199-abc",
+  username: "Ordersmith",
   email: "smith@weaponsoforder.test",
   emailConfirmed: true,
 } as const;
@@ -66,13 +67,16 @@ export function renderApp(
       });
     }
 
-    if (url.startsWith("/api/auth/")) {
-      return new Response(null, { status: 204 });
-    }
-
+    // The test's own stub gets first refusal on everything but the session, so a test about
+    // an account form can answer its own mutation. Declining falls through to the 204 below,
+    // which is what every test that only needs the mutation to succeed relies on.
     const answered = forge(url, init);
     if (answered) {
       return answered;
+    }
+
+    if (url.startsWith("/api/auth/")) {
+      return new Response(null, { status: 204 });
     }
 
     throw new Error(`unexpected request: ${url}`);

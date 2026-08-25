@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router";
 import { ApiProblem } from "@/api/problem";
+import { PASSWORD_HINT, USERNAME_HINT } from "@/auth/policy";
 import { AUTH_URLS, postJson } from "@/auth/session";
 import { useAntiforgeryTokens } from "@/auth/useSession";
 import { AuthScreen } from "@/components/auth/AuthScreen";
@@ -14,19 +15,17 @@ import {
   TextField,
 } from "@/components/auth/FormControls";
 
-/** Mirrors the server policy in appsettings.json. Client validation is for speed, not trust. */
-const MINIMUM_PASSWORD_LENGTH = 12;
-
 export function RegisterScreen() {
   const tokens = useAntiforgeryTokens();
 
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [mismatch, setMismatch] = useState(false);
 
   const register = useMutation({
-    mutationFn: () => postJson(AUTH_URLS.register, { email, password }, tokens),
+    mutationFn: () => postJson(AUTH_URLS.register, { username, email, password }, tokens),
   });
 
   const problem = register.error instanceof ApiProblem ? register.error : null;
@@ -43,7 +42,9 @@ export function RegisterScreen() {
       >
         <div className="flex flex-col gap-6">
           {/* Deliberately says "if": the same answer is given when the address is already
-              registered, so this screen cannot be used to test who has an account. */}
+              registered, so this screen cannot be used to test who has an account. A taken
+              username is not treated that way — it is reported at the field, because a name
+              is chosen to be seen and the player has to be able to pick another. */}
           <FormNotice tone="info">
             If that address can be registered, a confirmation link is on its way. Confirm it, then
             sign in.
@@ -85,6 +86,19 @@ export function RegisterScreen() {
           <FormNotice tone="error">{problem.message}</FormNotice>
         ) : null}
 
+        {/* First, because it is the name the player will be known by. The address below it is
+            what the account is recovered through. */}
+        <TextField
+          id="username"
+          label="Username"
+          type="text"
+          value={username}
+          onChange={setUsername}
+          autoComplete="username"
+          hint={USERNAME_HINT}
+          error={problem?.fieldError("username")}
+        />
+
         <TextField
           id="email"
           label="Email"
@@ -102,10 +116,12 @@ export function RegisterScreen() {
           value={password}
           onChange={setPassword}
           autoComplete="new-password"
-          hint={`At least ${MINIMUM_PASSWORD_LENGTH} characters. Length beats symbols.`}
+          hint={PASSWORD_HINT}
           error={problem?.fieldError("password")}
         />
 
+        {/* Kept from the original form. A password is typed blind, and a typo here would cost
+            the player the reset flow before they have even confirmed the address. */}
         <TextField
           id="password-confirmation"
           label="Confirm password"

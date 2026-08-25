@@ -533,7 +533,84 @@ remains Development-only.
 
 No gameplay was added, and no gameplay behaviour changed.
 
-## After Task 7
+---
+
+## Task 8 - Player usernames + a simpler password rule
+
+### Goal
+
+Make the Browser V1 account UX match the creator's decision: players choose a username, sign in
+with either that username or their email, and the password rule is length alone.
+
+This is an account-identity and auth-UX change only. No new authentication method, no profile
+system, no session-architecture change, no gameplay change.
+
+### Authority
+
+`docs/architecture/AUTH_SECURITY.md`, which now records the account model this task implements.
+
+### Creator decision
+
+Account model:
+- stable internal Guid UserId, unchanged and still what owns every player-owned record;
+- unique player-selected Username;
+- unique Email;
+- password.
+
+Login takes one field meaning "username or email".
+
+Username rule, deliberately minimal: trimmed, non-empty, no `@`, unique case-insensitively.
+Nothing else - no minimum length, no character classes, no gamer-tag pattern.
+
+The `@` restriction is what makes one login field unambiguous.
+
+Password rule: minimum 6 characters. No digit, uppercase, lowercase, symbol or diversity
+requirement. `aaaaaa` is valid.
+
+Duplicate handling differs by field on purpose: a taken username is reported at the username
+field, while a taken email keeps the existing anti-enumeration acknowledgement.
+
+### What this branch built
+
+- **Identity's own `UserName`**, not a second column. `NormalizedUserName` and its unique
+  `UserNameIndex` were already in the initial schema, so **no migration was required** and none
+  was created. Registration writes the submitted name where it previously wrote a copy of the
+  address.
+- **`IdentityOptions.User.AllowedUserNameCharacters` emptied**, because Identity's default
+  whitelist both permits `@` and rejects names the creator's rule allows. The endpoint's own
+  check - non-empty, no `@`, no longer than the 256-character column - is the authority, and
+  uniqueness stays with Identity and the database index rather than with a pre-check that a
+  race could slip past. The `CreateAsync` result is interpreted for exactly that race.
+- **one login identifier**. Trimmed; containing `@` resolves by `FindByEmailAsync`, otherwise by
+  `FindByNameAsync`, both case-insensitive through Identity normalization. Never both, so the
+  hashing work and the lockout counter are unchanged.
+- **the password policy reduced to length**: `RequiredLength` 6, `RequiredUniqueChars` 1, every
+  composition flag off, in `AuthOptions` defaults and `appsettings.json`. Nothing overrides it
+  per environment. Reset uses the same validators, so the same rule reaches it.
+- **`SessionAccount` carrying `username`** beside `id`, `email` and `emailConfirmed`, and
+  nothing else. The account and world screens name the player by username; the address stays
+  visible where it matters, on the Account screen and in the desktop account menu.
+- **the security behaviour preserved**: one generic answer for an unknown username, an unknown
+  address, a wrong password and a lockout; comparable hashing work for accounts that do not
+  exist; confirmation still enforced after the password check; antiforgery, rate limits,
+  lockout, the same-origin `HttpOnly` cookie and security-stamp validation untouched.
+- **existing accounts left alone**. An account created before this change has `UserName` equal
+  to its `Email`; it still signs in by address, still owns the same data through the same Guid,
+  and is not rewritten. There is no username-selection migration.
+
+### Acceptance
+
+- registration takes username, email and password, and persists the username separately;
+- a duplicate username is a username-field error; a duplicate email is not disclosed;
+- login works by username or email, in any case, with the same lockout;
+- `12345` is refused, `123456` and `aaaaaa` are accepted, at registration and at reset;
+- password recovery and confirmation remain email-based;
+- the session exposes the username and no Identity bookkeeping;
+- accounts created before the change still sign in and still own their game data.
+
+---
+
+## After Task 8
 
 Do not pre-author a large roadmap now.
 
@@ -546,7 +623,8 @@ At that point we will have:
 - army deployment;
 - deterministic combat prototype;
 - CI;
-- staging deployment.
+- staging deployment;
+- usernames and a password rule players can actually remember.
 
 Use the actual game to decide the next system and where balance/progression needs refinement.
 

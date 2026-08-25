@@ -20,7 +20,8 @@ describe("authenticated shell", () => {
 
     expect(await screen.findByRole("heading", { level: 1, name: "World" })).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeTruthy();
-    expect(screen.getByText(TEST_ACCOUNT.email, { selector: "dd" })).toBeTruthy();
+    // The world screen names the player, which is the username rather than the address.
+    expect(screen.getByText(TEST_ACCOUNT.username, { selector: "dd" })).toBeTruthy();
   });
 
   it("marks the destination the player is on", async () => {
@@ -64,6 +65,7 @@ describe("authenticated shell", () => {
 
     expect(await screen.findByRole("heading", { level: 1, name: "Account" })).toBeTruthy();
     expect(screen.getByText("Confirmed")).toBeTruthy();
+    expect(screen.getByText(TEST_ACCOUNT.username, { selector: "dd" })).toBeTruthy();
     expect(screen.getByText(TEST_ACCOUNT.email, { selector: "dd" })).toBeTruthy();
   });
 });
@@ -82,6 +84,7 @@ describe("shell access control", () => {
     // The very first paint, before the session request resolves.
     expect(screen.getByRole("status").textContent).toBe("Checking session");
     expect(screen.queryByRole("navigation", { name: "Primary" })).toBeNull();
+    expect(screen.queryByText(TEST_ACCOUNT.username)).toBeNull();
     expect(screen.queryByText(TEST_ACCOUNT.email)).toBeNull();
   });
 
@@ -116,6 +119,7 @@ describe("signing out", () => {
     expect(new Headers(logout?.[1]?.headers).get(ANTIFORGERY_HEADER)).toBe(SIGNED_IN.csrfToken);
 
     expect(screen.queryByRole("navigation", { name: "Primary" })).toBeNull();
+    expect(screen.queryByText(TEST_ACCOUNT.username)).toBeNull();
     expect(screen.queryByText(TEST_ACCOUNT.email)).toBeNull();
   });
 
@@ -123,7 +127,7 @@ describe("signing out", () => {
     const { fetchMock } = renderApp(SIGNED_IN);
     const user = userEvent.setup();
 
-    const trigger = await screen.findByRole("button", { name: new RegExp(TEST_ACCOUNT.email) });
+    const trigger = await screen.findByRole("button", { name: new RegExp(TEST_ACCOUNT.username) });
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
 
     await user.click(trigger);
@@ -143,7 +147,7 @@ describe("account menu", () => {
     renderApp(SIGNED_IN);
     const user = userEvent.setup();
 
-    const trigger = await screen.findByRole("button", { name: new RegExp(TEST_ACCOUNT.email) });
+    const trigger = await screen.findByRole("button", { name: new RegExp(TEST_ACCOUNT.username) });
     const topBar = within(screen.getByRole("banner"));
     await user.click(trigger);
 

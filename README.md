@@ -148,10 +148,19 @@ migration history regenerated from the model. See
 
 ## Accounts
 
-Sign-in is email + password on ASP.NET Core Identity, with the session held in an
-`HttpOnly` cookie. There is no token in `localStorage`, and mutating requests carry an
-antiforgery token in the `X-WoO-Antiforgery` header, which the client reads from
-`GET /api/auth/session`. Full rules are in
+An account is a stable internal Guid UserId, a unique player-chosen username, a unique email
+address and a password. Registration asks for all three; sign-in takes **one field meaning
+"username or email"**, matched case-insensitively. A username may be anything that is not
+empty and carries no `@` — that one restriction is what lets a single field tell a name from
+an address. The password rule is length alone: **at least 6 characters**, with no character-class
+or diversity requirement.
+
+Ownership never depends on the name. Every player-owned record points at the Guid UserId, and
+email remains what confirmation, password reset and account notifications run through.
+
+The session is held in an `HttpOnly` cookie on ASP.NET Core Identity. There is no token in
+`localStorage`, and mutating requests carry an antiforgery token in the `X-WoO-Antiforgery`
+header, which the client reads from `GET /api/auth/session`. Full rules are in
 [`AUTH_SECURITY.md`](docs/architecture/AUTH_SECURITY.md).
 
 A confirmed email address is required before sign-in. **No email provider is configured

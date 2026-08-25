@@ -1,8 +1,13 @@
 namespace WeaponsOfOrder.Api.Auth;
 
-internal sealed record RegisterRequest(string? Email, string? Password);
+internal sealed record RegisterRequest(string? Username, string? Email, string? Password);
 
-internal sealed record LoginRequest(string? Email, string? Password, bool RememberMe = false);
+/// <summary>
+/// <paramref name="Identifier"/> is a username or an email address. Registration refuses a
+/// username containing <c>@</c>, so the two namespaces cannot collide and one field is
+/// enough. See <see cref="AuthEndpoints"/>.
+/// </summary>
+internal sealed record LoginRequest(string? Identifier, string? Password, bool RememberMe = false);
 
 internal sealed record ForgotPasswordRequest(string? Email);
 
@@ -29,10 +34,15 @@ internal sealed record ConfirmEmailRequest(string? UserId, string? Token);
 internal sealed record SessionResponse(bool Authenticated, SessionAccount? Account, string CsrfToken);
 
 /// <summary>
-/// Only the fields the UI actually needs. Security stamps, hashes, lockout counters and
-/// the rest of Identity's bookkeeping stay on the server.
+/// Only the fields the UI actually needs. Security stamps, hashes, lockout counters, the
+/// normalized lookup columns and the rest of Identity's bookkeeping stay on the server.
 /// </summary>
-internal sealed record SessionAccount(Guid Id, string Email, bool EmailConfirmed);
+/// <remarks>
+/// <paramref name="Username"/> is the player-facing account identifier.
+/// <paramref name="Id"/> remains the stable internal identity every player-owned record
+/// points at; nothing in the game keys off the name.
+/// </remarks>
+internal sealed record SessionAccount(Guid Id, string Username, string Email, bool EmailConfirmed);
 
 /// <summary>
 /// The deliberately identical answer to "register" and "resend confirmation" whether or not

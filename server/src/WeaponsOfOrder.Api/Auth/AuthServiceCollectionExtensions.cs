@@ -68,6 +68,15 @@ internal static class AuthServiceCollectionExtensions
 
             identity.User.RequireUniqueEmail = true;
 
+            // Identity's default is a whitelist of ASCII letters, digits and `-._@+`, which
+            // both allows the one character Browser V1 forbids and rejects an accented or
+            // non-Latin name the creator's rule permits. Emptying it turns Identity's
+            // character check off, leaving AuthEndpoints.ValidateUsername as the only rule:
+            // non-empty, no `@`, unique. Only the character whitelist is removed — Identity
+            // still refuses a blank name, still normalizes for lookup, and the unique
+            // NormalizedUserName index is still what settles a race.
+            identity.User.AllowedUserNameCharacters = string.Empty;
+
             identity.Password.RequiredLength = settings.Password.RequiredLength;
             identity.Password.RequiredUniqueChars = settings.Password.RequiredUniqueChars;
             identity.Password.RequireDigit = settings.Password.RequireDigit;

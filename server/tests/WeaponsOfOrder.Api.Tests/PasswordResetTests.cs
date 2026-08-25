@@ -36,13 +36,13 @@ public sealed class PasswordResetTests(WeaponsOfOrderApiFactory factory)
 
         var withOldPassword = await client.PostAsync(
             "/api/auth/login",
-            new { email, password = TestAccounts.ValidPassword },
+            new { identifier = email, password = TestAccounts.ValidPassword },
             Cancellation);
         Assert.Equal(HttpStatusCode.Unauthorized, withOldPassword.StatusCode);
 
         var withNewPassword = await client.PostAsync(
             "/api/auth/login",
-            new { email, password = ReplacementPassword },
+            new { identifier = email, password = ReplacementPassword },
             Cancellation);
         Assert.Equal(HttpStatusCode.NoContent, withNewPassword.StatusCode);
     }
@@ -141,12 +141,47 @@ public sealed class PasswordResetTests(WeaponsOfOrderApiFactory factory)
         var (userId, token) = CapturingNotificationSender.ReadLinkParameters(notification);
         var response = await client.PostAsync(
             "/api/auth/reset-password",
-            new { userId, token, password = "short" },
+            new { userId, token, password = TestAccounts.TooShortPassword },
             Cancellation);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var body = await TestAccounts.ReadBodyAsync(response, Cancellation);
         Assert.True(body.GetProperty("errors").TryGetProperty("password", out _));
+    }
+
+    /// <summary>
+    /// Reset runs the same validators registration does, so the simplified policy reaches it
+    /// without the endpoint carrying a rule of its own.
+    /// </summary>
+    [Theory]
+    [InlineData(TestAccounts.ShortestValidPassword)]
+    [InlineData("aaaaaa")]
+    [InlineData("!!!!!!")]
+    public async Task The_simple_password_policy_applies_to_a_reset(string replacement)
+    {
+        using var client = factory.CreateAuthClient();
+        var email = TestAccounts.NewEmail("reset-policy");
+        await client.SignInAsNewAccountAsync(factory, email, TestAccounts.ValidPassword, Cancellation);
+        await client.PostAsync("/api/auth/logout", new { }, Cancellation);
+
+        await client.PostAsync("/api/auth/forgot-password", new { email }, Cancellation);
+        var notification = factory.Notifications.Latest(AccountNotificationKind.PasswordReset, email);
+        Assert.NotNull(notification);
+
+        var (userId, token) = CapturingNotificationSender.ReadLinkParameters(notification);
+        var reset = await client.PostAsync(
+            "/api/auth/reset-password",
+            new { userId, token, password = replacement },
+            Cancellation);
+
+        Assert.Equal(HttpStatusCode.NoContent, reset.StatusCode);
+
+        var signIn = await client.PostAsync(
+            "/api/auth/login",
+            new { identifier = email, password = replacement },
+            Cancellation);
+
+        Assert.Equal(HttpStatusCode.NoContent, signIn.StatusCode);
     }
 }

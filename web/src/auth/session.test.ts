@@ -62,7 +62,12 @@ describe("fetchSession", () => {
     stubFetch(
       jsonResponse({
         authenticated: true,
-        account: { id: "0199-abc", email: "smith@weaponsoforder.test", emailConfirmed: true },
+        account: {
+          id: "0199-abc",
+          username: "Ordersmith",
+          email: "smith@weaponsoforder.test",
+          emailConfirmed: true,
+        },
         csrfToken: "token-2",
       }),
     );
@@ -70,6 +75,7 @@ describe("fetchSession", () => {
     const session = await fetchSession();
 
     expect(session.authenticated).toBe(true);
+    expect(session.account?.username).toBe("Ordersmith");
     expect(session.account?.email).toBe("smith@weaponsoforder.test");
   });
 
@@ -93,7 +99,7 @@ describe("postJson", () => {
   it("sends the antiforgery token as a header", async () => {
     const fetchMock = stubFetch(new Response(null, { status: 204 }));
 
-    await postJson(AUTH_URLS.login, { email: "a@b.test" }, tokenSource("token-1"));
+    await postJson(AUTH_URLS.login, { identifier: "a@b.test" }, tokenSource("token-1"));
 
     expect(headerOf(fetchMock, 0)).toBe("token-1");
     expect(fetchMock.mock.calls[0]?.[1]?.method).toBe("POST");

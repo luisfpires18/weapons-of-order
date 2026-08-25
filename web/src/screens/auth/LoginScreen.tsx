@@ -21,14 +21,14 @@ export function LoginScreen() {
   const tokens = useAntiforgeryTokens();
   const refreshSession = useRefreshSession();
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
 
   const destination = safeRedirectTarget(searchParams.get(RETURN_PARAM)) ?? WORLD_PATH;
 
   const signIn = useMutation({
-    mutationFn: () => postJson(AUTH_URLS.login, { email, password, rememberMe }, tokens),
+    mutationFn: () => postJson(AUTH_URLS.login, { identifier, password, rememberMe }, tokens),
     onSuccess: async () => {
       // The session is re-read before navigating: it is what the route guard consults and
       // what carries an antiforgery token bound to the new identity.
@@ -80,13 +80,16 @@ export function LoginScreen() {
           </FormNotice>
         ) : null}
 
+        {/* One field for both. The server reads anything containing an @ as an address and
+            anything else as a username, which registration guarantees is unambiguous.
+            `username` is the autocomplete token a password manager fills either form into. */}
         <TextField
-          id="email"
-          label="Email"
-          type="email"
-          value={email}
-          onChange={setEmail}
-          autoComplete="email"
+          id="identifier"
+          label="Username or email"
+          type="text"
+          value={identifier}
+          onChange={setIdentifier}
+          autoComplete="username"
         />
 
         <TextField
