@@ -21,14 +21,17 @@ public sealed class LockoutTests(WeaponsOfOrderApiFactory factory)
 
         using var client = factory.CreateAuthClient();
         var email = TestAccounts.NewEmail("lockout");
-        await client.SignInAsNewAccountAsync(factory, email, TestAccounts.ValidPassword, Cancellation);
+        var username = TestAccounts.NewUsername("lockout");
+        await client.SignInAsNewAccountAsync(factory, username, email, TestAccounts.ValidPassword, Cancellation);
         await client.PostAsync("/api/auth/logout", new { }, Cancellation);
 
+        // Spent through the username. Lockout belongs to the account, not to the field the
+        // attempts arrived through, so the address below is locked out by these.
         for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
             var failure = await client.PostAsync(
                 "/api/auth/login",
-                new { email, password = $"wrong-password-{attempt}" },
+                new { identifier = username, password = $"wrong-password-{attempt}" },
                 Cancellation);
 
             Assert.Equal(HttpStatusCode.Unauthorized, failure.StatusCode);
@@ -36,13 +39,20 @@ public sealed class LockoutTests(WeaponsOfOrderApiFactory factory)
 
         var withCorrectPassword = await client.PostAsync(
             "/api/auth/login",
-            new { email, password = TestAccounts.ValidPassword },
+            new { identifier = email, password = TestAccounts.ValidPassword },
             Cancellation);
 
         // Now even the right password fails, and it fails with the same generic answer:
-        // naming the lockout would confirm the address is registered.
+        // naming the lockout would confirm the account is registered.
         Assert.Equal(HttpStatusCode.Unauthorized, withCorrectPassword.StatusCode);
         Assert.Equal("invalid_credentials", await TestAccounts.ReadProblemCodeAsync(withCorrectPassword, Cancellation));
+
+        var withCorrectPasswordByName = await client.PostAsync(
+            "/api/auth/login",
+            new { identifier = username, password = TestAccounts.ValidPassword },
+            Cancellation);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, withCorrectPasswordByName.StatusCode);
 
         var users = scope.ServiceProvider.GetRequiredService<UserManager<WeaponsOfOrderUser>>();
         var stored = await users.FindByEmailAsync(email);
@@ -61,11 +71,14 @@ public sealed class LockoutTests(WeaponsOfOrderApiFactory factory)
         await client.SignInAsNewAccountAsync(factory, email, TestAccounts.ValidPassword, Cancellation);
         await client.PostAsync("/api/auth/logout", new { }, Cancellation);
 
-        await client.PostAsync("/api/auth/login", new { email, password = "wrong-once" }, Cancellation);
+        await client.PostAsync(
+            "/api/auth/login",
+            new { identifier = email, password = "wrong-once" },
+            Cancellation);
 
         var success = await client.PostAsync(
             "/api/auth/login",
-            new { email, password = TestAccounts.ValidPassword },
+            new { identifier = email, password = TestAccounts.ValidPassword },
             Cancellation);
         Assert.Equal(HttpStatusCode.NoContent, success.StatusCode);
 

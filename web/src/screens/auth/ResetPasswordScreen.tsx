@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ApiProblem } from "@/api/problem";
+import { PASSWORD_HINT } from "@/auth/policy";
 import { AUTH_URLS, postJson } from "@/auth/session";
 import { useAntiforgeryTokens } from "@/auth/useSession";
 import { AuthScreen } from "@/components/auth/AuthScreen";
@@ -96,7 +97,7 @@ export function ResetPasswordScreen() {
           value={password}
           onChange={setPassword}
           autoComplete="new-password"
-          hint="At least 12 characters. Length beats symbols."
+          hint={PASSWORD_HINT}
           error={problem?.fieldError("password")}
         />
 

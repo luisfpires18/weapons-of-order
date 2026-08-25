@@ -53,6 +53,7 @@ export function AccountMenu() {
     };
   }, [open]);
 
+  const username = data?.account?.username ?? "";
   const email = data?.account?.email ?? "";
   const problem = signOut.error instanceof ApiProblem ? signOut.error : null;
 
@@ -66,7 +67,7 @@ export function AccountMenu() {
         onClick={() => setOpen((wasOpen) => !wasOpen)}
         className="flex min-h-10 max-w-[20rem] cursor-pointer items-center gap-3 border-[length:var(--border-panel)] border-transparent px-3 font-hud text-[0.8125rem] font-semibold uppercase tracking-[0.14em] text-bone-dim transition-colors hover:border-slate hover:text-bone aria-expanded:border-slate aria-expanded:text-bone focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-selected motion-reduce:transition-none"
       >
-        <span className="truncate normal-case tracking-[0.04em]">{email}</span>
+        <span className="truncate normal-case tracking-[0.04em]">{username}</span>
         <Chevron open={open} />
       </button>
 
@@ -76,11 +77,14 @@ export function AccountMenu() {
           ref={panelRef}
           className="absolute right-0 top-[calc(100%+0.5rem)] z-40 flex w-[19rem] flex-col rounded-panel border-[length:var(--border-panel)] border-slate bg-ink shadow-[0_18px_40px_rgba(3,10,16,0.65)]"
         >
+          {/* The name first, because it is what the player is known by; the address under it
+              in the dimmer register, because it is what the account is recovered through. */}
           <p className="border-b-[length:var(--border-panel)] border-slate/70 px-5 py-4 font-body text-body break-all text-bone-dim">
             <span className="mb-1 block font-hud text-hud font-semibold uppercase tracking-[0.16em] text-bone-dim">
               Signed in as
             </span>
-            <span className="text-bone">{email}</span>
+            <span className="block text-bone">{username}</span>
+            <span className="block">{email}</span>
           </p>
 
           {/* Closed here rather than on a route change, because this is the only navigation

@@ -99,7 +99,11 @@ public sealed class AntiforgeryTests(WeaponsOfOrderApiFactory factory)
 
         var response = await client.PostAsync(
             "/api/auth/login",
-            new { email = TestAccounts.NewEmail("antiforgery-login"), password = TestAccounts.ValidPassword },
+            new
+            {
+                identifier = TestAccounts.NewEmail("antiforgery-login"),
+                password = TestAccounts.ValidPassword,
+            },
             csrfToken: null,
             Cancellation);
 

@@ -20,14 +20,15 @@ internal static class AuthProblems
     public const string RateLimitedCode = "rate_limited";
 
     /// <summary>
-    /// The single answer to an unknown address, a wrong password, and a locked-out account.
-    /// Naming the lockout would confirm the address is registered.
+    /// The single answer to an unknown username, an unknown address, a wrong password, and a
+    /// locked-out account. Naming the lockout would confirm the account is registered.
     /// </summary>
     public static IResult InvalidCredentials() => Problem(
         StatusCodes.Status401Unauthorized,
         InvalidCredentialsCode,
         "Sign-in failed.",
-        "That email and password combination is not correct. Repeated failures lock the account for a while.");
+        "That sign-in and password combination is not correct. Repeated failures lock the account "
+        + "for a while.");
 
     /// <summary>
     /// Safe to state plainly: the caller reaches this only after a successful password check.

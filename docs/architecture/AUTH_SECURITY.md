@@ -9,8 +9,20 @@ Browser V1 uses a Weapons of Order account backed by **ASP.NET Core Identity + E
 The store underneath is SQLite for the prototype and PostgreSQL for real production; see
 `TECH_STACK.md`. Nothing in this document depends on which it is.
 
-Initial login method:
-- email + password.
+A Browser V1 account is:
+- a stable internal Guid **UserId**;
+- a unique player-selected **Username**;
+- a unique **Email**;
+- a **password**.
+
+Login accepts **Username OR Email**, plus the password.
+
+Email remains what confirmation, password recovery and account notifications run through.
+Username is a player-facing identifier only.
+
+The Username is Identity's own `UserName`/`NormalizedUserName`, not a second column and not a
+gameplay profile field. It is **not** the database identity: every player-owned record points
+at the Guid UserId, so a name is a label rather than a key.
 
 Steam authentication/account linking is deferred until Steam work begins.
 
@@ -41,14 +53,35 @@ The browser client may ask the API who the current user is. The server remains t
 ## Registration
 
 Registration requires:
+- username;
 - valid email;
 - password accepted by the configured Identity password policy.
 
-Use normalized/unique email semantics through Identity.
+Use normalized/unique email **and username** semantics through Identity, so both are unique
+case-insensitively and neither uniqueness rule is enforced only in application code.
+
+The username rule is deliberately minimal:
+- surrounding whitespace is trimmed;
+- it may not be empty;
+- it may not contain `@`;
+- it must be unique.
+
+There is no minimum length, no character-class requirement and no gamer-tag pattern. Identity's
+default `AllowedUserNameCharacters` whitelist is switched off, because it both permits the one
+character this rule forbids and rejects names this rule allows.
+
+The `@` restriction exists so a single login field is unambiguous: an identifier containing `@`
+is an address, and one without it is a username. Without that rule one player's username could
+be another player's address.
 
 Do not create separate custom password hashing code.
 
 Do not expose whether another person's account exists through unnecessarily specific public error messages.
+
+Username availability is not treated as a secret: a taken username is reported as a validation
+error on the username field, because a name is chosen to be seen and the player has to be able
+to pick another. A taken **email** keeps the existing anti-enumeration behaviour and is answered
+with the ordinary acknowledgement.
 
 Email confirmation should be supported by the account architecture. During local development a development email/token flow may be used until a production email provider is selected.
 
@@ -57,10 +90,18 @@ The exact production email delivery provider is an infrastructure/configuration 
 ## Login/logout
 
 Login:
+- takes one identifier field meaning "username or email", plus the password;
+- resolves the account by address when the trimmed identifier contains `@` and by username when
+  it does not, both case-insensitively through Identity normalization;
 - validates credentials server-side through Identity;
 - establishes the secure cookie session;
 - applies rate limiting/lockout protections;
 - returns generic failure behavior for invalid credentials.
+
+An unknown username, an unknown address, a wrong password and a locked-out account all produce
+the same response. Lockout belongs to the account, so attempts through either identifier count
+towards the same counter. Unknown accounts still perform comparable password-hashing work, so
+the answer does not arrive measurably faster than for one that exists.
 
 Logout:
 - invalidates/signs out the server authentication session;
@@ -71,6 +112,11 @@ Sensitive state must not remain visible from stale client memory after logout.
 ## Password recovery
 
 Use Identity's reset-token flow.
+
+Password recovery stays **email-based**. Forgot-password asks for the address, not the username:
+the thing being proven is control of the mailbox.
+
+Password reset applies the same password policy registration does.
 
 Password reset messages must not reveal whether a submitted address belongs to an account.
 
@@ -196,8 +242,8 @@ Security-relevant events may be logged with enough context to diagnose abuse whi
 ## Tests required for auth work
 
 At minimum, auth implementation tasks should verify:
-- registration validation;
-- successful login;
+- registration validation, including username uniqueness and the `@` restriction;
+- successful login by username and by email, in either case;
 - failed login;
 - logout;
 - unauthenticated protected endpoint rejection;
@@ -233,12 +279,24 @@ Antiforgery:
   unauthenticated flows, because login CSRF is a real attack and a uniform rule is easier to
   keep correct than an exemption list.
 
+Account identity:
+- Identity's `UserName` holds the player-selected username and `NormalizedUserName` its
+  case-insensitive form, under the unique `UserNameIndex` Identity's schema already carries;
+- the session endpoint publishes exactly `id`, `username`, `email` and `emailConfirmed`. The
+  normalized columns, the security stamp, the password hash and the lockout fields stay on the
+  server;
+- accounts created before usernames existed have `UserName` equal to their `Email`. They remain
+  valid: the address contains `@`, so the login identifier resolves them by address, and their
+  Guid UserId — which owns their forge, inventory, units and army — is untouched. Nothing
+  rewrites them, and no username-selection migration exists.
+
 Email confirmation:
 - required before a session can be established, configurable through
   `Auth:RequireConfirmedEmailForSignIn`;
 - enforced by the login endpoint **after** the password check, not through
   `IdentityOptions.SignIn.RequireConfirmedAccount`. Identity's own check runs before the
-  password is verified, which would let anyone discover which addresses are registered.
+  password is verified, which would let anyone discover which addresses are registered;
+- enforced identically whether the player signed in with their username or their address.
 
 Account link origin:
 - built only from `Auth:ClientBaseUrl`, which must be an absolute https origin, or http for
@@ -261,7 +319,10 @@ Development email delivery:
   discloses.
 
 Current thresholds (all configuration under `Auth`):
-- password: 12 characters minimum, 4 unique, no character-class requirements;
+- password: **minimum 6 characters and no composition requirements** — no digit, uppercase,
+  lowercase, symbol or character-diversity rule, so `aaaaaa` is valid. Length is the whole rule.
+  The client states it too, for speed only; the server rejects anything shorter regardless of
+  what the browser sent;
 - lockout: 5 failed attempts, 15 minutes;
 - rate limits per caller address: login 10 per 5 minutes, registration 5 per 15 minutes,
   password reset and confirmation resend 5 per 15 minutes.

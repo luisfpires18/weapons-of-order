@@ -5,7 +5,13 @@ using Xunit;
 namespace WeaponsOfOrder.Api.Tests;
 
 /// <summary>What <c>GET /api/auth/session</c> tells the browser.</summary>
-public sealed record SessionSnapshot(bool Authenticated, Guid? AccountId, string? Email, bool EmailConfirmed, string CsrfToken);
+public sealed record SessionSnapshot(
+    bool Authenticated,
+    Guid? AccountId,
+    string? Username,
+    string? Email,
+    bool EmailConfirmed,
+    string CsrfToken);
 
 /// <summary>
 /// Drives the account API the way the browser client does: read the session to obtain an
@@ -29,6 +35,7 @@ public sealed class AuthTestClient(HttpClient http) : IDisposable
         return new SessionSnapshot(
             authenticated,
             account.ValueKind == JsonValueKind.Object ? account.GetProperty("id").GetGuid() : null,
+            account.ValueKind == JsonValueKind.Object ? account.GetProperty("username").GetString() : null,
             account.ValueKind == JsonValueKind.Object ? account.GetProperty("email").GetString() : null,
             account.ValueKind == JsonValueKind.Object && account.GetProperty("emailConfirmed").GetBoolean(),
             body.GetProperty("csrfToken").GetString() ?? string.Empty);
@@ -57,16 +64,56 @@ public sealed class AuthTestClient(HttpClient http) : IDisposable
         return Http.SendAsync(request, cancellationToken);
     }
 
-    /// <summary>Registers, confirms and signs in, for tests whose subject is something else.</summary>
-    public async Task<string> SignInAsNewAccountAsync(
+    /// <summary>
+    /// Registers, confirms and signs in, for tests whose subject is something else.
+    /// </summary>
+    /// <remarks>
+    /// The username is derived from the address rather than asked for, because most callers
+    /// only need an account that exists. Tests about the name itself pass one explicitly.
+    /// </remarks>
+    public Task<string> SignInAsNewAccountAsync(
         WeaponsOfOrderApiFactory factory,
         string email,
         string password,
         CancellationToken cancellationToken)
-    {
-        var registration = await PostAsync("/api/auth/register", new { email, password }, cancellationToken);
-        Assert.Equal(System.Net.HttpStatusCode.Accepted, registration.StatusCode);
+        => SignInAsNewAccountAsync(factory, TestAccounts.UsernameFor(email), email, password, cancellationToken);
 
+    /// <inheritdoc cref="SignInAsNewAccountAsync(WeaponsOfOrderApiFactory, string, string, CancellationToken)"/>
+    public async Task<string> SignInAsNewAccountAsync(
+        WeaponsOfOrderApiFactory factory,
+        string username,
+        string email,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        await RegisterAsync(username, email, password, cancellationToken);
+        await ConfirmAsync(factory, email, cancellationToken);
+        await SignInAsync(email, password, cancellationToken);
+
+        return email;
+    }
+
+    /// <summary>Registers an account and asserts the acknowledgement, nothing more.</summary>
+    public async Task RegisterAsync(
+        string username,
+        string email,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        var registration = await PostAsync(
+            "/api/auth/register",
+            new { username, email, password },
+            cancellationToken);
+
+        Assert.Equal(System.Net.HttpStatusCode.Accepted, registration.StatusCode);
+    }
+
+    /// <summary>Follows the confirmation link that registration produced.</summary>
+    public async Task ConfirmAsync(
+        WeaponsOfOrderApiFactory factory,
+        string email,
+        CancellationToken cancellationToken)
+    {
         var confirmation = factory.Notifications.Latest(
             WeaponsOfOrder.Api.Auth.Notifications.AccountNotificationKind.EmailConfirmation,
             email);
@@ -75,10 +122,6 @@ public sealed class AuthTestClient(HttpClient http) : IDisposable
         var (userId, token) = CapturingNotificationSender.ReadLinkParameters(confirmation);
         var confirmed = await PostAsync("/api/auth/confirm-email", new { userId, token }, cancellationToken);
         Assert.Equal(System.Net.HttpStatusCode.NoContent, confirmed.StatusCode);
-
-        await SignInAsync(email, password, cancellationToken);
-
-        return email;
     }
 
     /// <summary>
@@ -86,9 +129,14 @@ public sealed class AuthTestClient(HttpClient http) : IDisposable
     /// the same account — which is how a reload or a new device is proven to see the same
     /// server-side state.
     /// </summary>
-    public async Task SignInAsync(string email, string password, CancellationToken cancellationToken)
+    /// <param name="identifier">A username or an email address, as the login field accepts.</param>
+    public async Task SignInAsync(string identifier, string password, CancellationToken cancellationToken)
     {
-        var login = await PostAsync("/api/auth/login", new { email, password }, cancellationToken);
+        var login = await PostAsync(
+            "/api/auth/login",
+            new { identifier, password },
+            cancellationToken);
+
         Assert.Equal(System.Net.HttpStatusCode.NoContent, login.StatusCode);
     }
 

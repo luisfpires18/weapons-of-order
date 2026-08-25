@@ -18,9 +18,10 @@ public sealed class EmailConfirmationTests(WeaponsOfOrderApiFactory factory)
         using var client = factory.CreateAuthClient();
         var email = TestAccounts.NewEmail("confirm-happy");
 
-        await client.PostAsync(
-            "/api/auth/register",
-            new { email, password = TestAccounts.ValidPassword },
+        await client.RegisterAsync(
+            TestAccounts.UsernameFor(email),
+            email,
+            TestAccounts.ValidPassword,
             Cancellation);
 
         var notification = factory.Notifications.Latest(AccountNotificationKind.EmailConfirmation, email);
@@ -47,13 +48,15 @@ public sealed class EmailConfirmationTests(WeaponsOfOrderApiFactory factory)
         var target = TestAccounts.NewEmail("confirm-target");
         var other = TestAccounts.NewEmail("confirm-other");
 
-        await client.PostAsync(
-            "/api/auth/register",
-            new { email = target, password = TestAccounts.ValidPassword },
+        await client.RegisterAsync(
+            TestAccounts.UsernameFor(target),
+            target,
+            TestAccounts.ValidPassword,
             Cancellation);
-        await client.PostAsync(
-            "/api/auth/register",
-            new { email = other, password = TestAccounts.ValidPassword },
+        await client.RegisterAsync(
+            TestAccounts.UsernameFor(other),
+            other,
+            TestAccounts.ValidPassword,
             Cancellation);
 
         var targetNotification = factory.Notifications.Latest(AccountNotificationKind.EmailConfirmation, target);
@@ -94,9 +97,10 @@ public sealed class EmailConfirmationTests(WeaponsOfOrderApiFactory factory)
         using var client = factory.CreateAuthClient();
         var registered = TestAccounts.NewEmail("resend-known");
 
-        await client.PostAsync(
-            "/api/auth/register",
-            new { email = registered, password = TestAccounts.ValidPassword },
+        await client.RegisterAsync(
+            TestAccounts.UsernameFor(registered),
+            registered,
+            TestAccounts.ValidPassword,
             Cancellation);
 
         var known = await client.PostAsync(

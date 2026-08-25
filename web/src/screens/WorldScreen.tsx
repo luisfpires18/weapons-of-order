@@ -40,7 +40,7 @@ export function WorldScreen() {
         </p>
 
         <FactList>
-          <Fact label="Signed in as">{data?.account?.email}</Fact>
+          <Fact label="Signed in as">{data?.account?.username}</Fact>
         </FactList>
       </div>
     </ShellScreen>

@@ -18,11 +18,27 @@ internal static class AuthEndpoints
 
     private const string LoggerCategory = "WeaponsOfOrder.Api.Auth";
 
-    /// <summary>Identity's codes for "this address already has an account".</summary>
-    private static readonly string[] DuplicateErrorCodes = ["DuplicateUserName", "DuplicateEmail"];
+    /// <summary>
+    /// The Identity error codes this endpoint interprets. Kept separate rather than grouped:
+    /// a taken username is reported to the player, while a taken address deliberately is not.
+    /// </summary>
+    private const string DuplicateUserNameCode = "DuplicateUserName";
+    private const string DuplicateEmailCode = "DuplicateEmail";
+    private const string InvalidUserNameCode = "InvalidUserName";
+    private const string InvalidEmailCode = "InvalidEmail";
 
-    /// <summary>Identity's codes for an address it will not accept at all.</summary>
-    private static readonly string[] InvalidEmailErrorCodes = ["InvalidEmail", "InvalidUserName"];
+    /// <summary>
+    /// Identity's own column width for <c>NormalizedUserName</c>. A storage limit rather than
+    /// a product rule, and the only length the username has.
+    /// </summary>
+    private const int MaximumUsernameLength = 256;
+
+    private const string UsernameTakenMessage = "That username is already in use.";
+
+    private const string InvalidUsernameMessage =
+        "A username cannot contain @, because sign-in reads anything with an @ as an email address.";
+
+    private const string InvalidEmailMessage = "Enter a valid email address.";
 
     public static IEndpointRouteBuilder MapWeaponsOfOrderAuth(this IEndpointRouteBuilder endpoints)
     {
@@ -73,7 +89,11 @@ internal static class AuthEndpoints
             ? Results.Ok(new SessionResponse(false, null, csrfToken))
             : Results.Ok(new SessionResponse(
                 true,
-                new SessionAccount(user.Id, user.Email ?? string.Empty, user.EmailConfirmed),
+                new SessionAccount(
+                    user.Id,
+                    user.UserName ?? string.Empty,
+                    user.Email ?? string.Empty,
+                    user.EmailConfirmed),
                 csrfToken));
     }
 
@@ -85,46 +105,78 @@ internal static class AuthEndpoints
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
+        var username = request.Username?.Trim() ?? string.Empty;
         var email = Normalize(request.Email);
         var password = request.Password ?? string.Empty;
-        var candidate = new WeaponsOfOrderUser { UserName = email, Email = email };
+        // The username Identity already stores, not a second column: NormalizedUserName and
+        // its unique index exist, and the account's Guid Id remains what owns game data.
+        var candidate = new WeaponsOfOrderUser { UserName = username, Email = email };
         var errors = new Dictionary<string, string[]>();
+
+        if (ValidateUsername(username) is { } usernameError)
+        {
+            errors["username"] = [usernameError];
+        }
 
         if (!LooksLikeEmail(email))
         {
-            errors["email"] = ["Enter a valid email address."];
+            errors["email"] = [InvalidEmailMessage];
         }
 
         // The password is checked before the account is created so a rejected password is
         // reported as a rejected password, whether or not the address is already in use.
-        // That keeps the duplicate path below indistinguishable from success.
+        // That keeps the duplicate-address path below indistinguishable from success.
         var passwordErrors = await ValidatePasswordAsync(users, candidate, password);
         if (passwordErrors.Length > 0)
         {
             errors["password"] = passwordErrors;
         }
 
-        // Both fields are reported at once: fixing one only to be told about the other is a
-        // second round trip for something the server already knew.
+        // Every field is reported at once: fixing one only to be told about the next is a
+        // round trip for something the server already knew.
         if (errors.Count > 0)
         {
             return AuthProblems.Fields(errors);
         }
 
+        // Asked early so a taken name is answered as a taken name rather than disappearing
+        // into the deliberately vague duplicate-address acknowledgement below. It is not what
+        // makes the name unique — two simultaneous registrations both pass this — which is
+        // why the CreateAsync result is interpreted for the same case.
+        if (await users.FindByNameAsync(username) is not null)
+        {
+            return AuthProblems.Field("username", UsernameTakenMessage);
+        }
+
         var result = await users.CreateAsync(candidate, password);
         if (!result.Succeeded)
         {
-            if (result.Errors.Any(error => InvalidEmailErrorCodes.Contains(error.Code)))
+            var codes = result.Errors.Select(error => error.Code).ToArray();
+
+            // A username is not a secret: it is chosen to be seen, and saying it is taken is
+            // the only way the player can pick another. It discloses nothing about an account
+            // either — a taken name says nothing about the address submitted alongside it.
+            if (codes.Contains(DuplicateUserNameCode))
             {
-                return AuthProblems.Field("email", "Enter a valid email address.");
+                return AuthProblems.Field("username", UsernameTakenMessage);
             }
 
-            if (!result.Errors.All(error => DuplicateErrorCodes.Contains(error.Code)))
+            if (codes.Contains(InvalidUserNameCode))
+            {
+                return AuthProblems.Field("username", InvalidUsernameMessage);
+            }
+
+            if (codes.Contains(InvalidEmailCode))
+            {
+                return AuthProblems.Field("email", InvalidEmailMessage);
+            }
+
+            if (!codes.All(code => code == DuplicateEmailCode))
             {
                 // Codes only. Identity's descriptions can quote the submitted address.
                 loggerFactory.CreateLogger(LoggerCategory).LogWarning(
                     "Registration rejected by Identity: {Codes}",
-                    string.Join(", ", result.Errors.Select(error => error.Code)));
+                    string.Join(", ", codes));
 
                 return AuthProblems.RegistrationFailed();
             }
@@ -147,18 +199,27 @@ internal static class AuthEndpoints
         SignInManager<WeaponsOfOrderUser> signIn,
         IOptions<AuthOptions> options)
     {
-        var email = Normalize(request.Email);
+        var identifier = request.Identifier?.Trim() ?? string.Empty;
         var password = request.Password ?? string.Empty;
 
-        if (email.Length == 0 || password.Length == 0)
+        if (identifier.Length == 0 || password.Length == 0)
         {
             return AuthProblems.InvalidCredentials();
         }
 
-        var user = await users.FindByEmailAsync(email);
+        // One field, two namespaces, no ambiguity between them: registration refuses a
+        // username containing an at sign, so an identifier carrying one can only be an
+        // address. Both lookups go through Identity's normalizer, which is what makes either
+        // form case-insensitive. Resolving both and comparing passwords is deliberately not
+        // done — it would double the hashing work and, on a legacy account whose UserName is
+        // its Email, check the same account twice.
+        var user = identifier.Contains('@', StringComparison.Ordinal)
+            ? await users.FindByEmailAsync(identifier)
+            : await users.FindByNameAsync(identifier);
+
         if (user is null)
         {
-            // Hash something anyway. Skipping the work would make unknown addresses answer
+            // Hash something anyway. Skipping the work would make unknown accounts answer
             // measurably faster than known ones.
             users.PasswordHasher.HashPassword(new WeaponsOfOrderUser(), password);
             return AuthProblems.InvalidCredentials();
@@ -339,6 +400,25 @@ internal static class AuthEndpoints
             "No trusted client origin is configured, so a {Kind} link was not created. Set "
             + "Auth:ClientBaseUrl.",
             kind);
+
+    /// <summary>
+    /// The whole username rule: non-empty, no at sign, and no longer than the column.
+    /// </summary>
+    /// <remarks>
+    /// The at-sign restriction is what makes a single login field possible. An identifier
+    /// containing one is an address and an identifier without one is a username, so no input
+    /// can ever name two different accounts. Identity's own
+    /// <c>AllowedUserNameCharacters</c> whitelist is switched off in
+    /// <see cref="AuthServiceCollectionExtensions"/> so this is the only character rule, and
+    /// uniqueness is left to Identity and the unique <c>NormalizedUserName</c> index.
+    /// </remarks>
+    private static string? ValidateUsername(string username) => username switch
+    {
+        { Length: 0 } => "Choose a username.",
+        _ when username.Contains('@', StringComparison.Ordinal) => InvalidUsernameMessage,
+        { Length: > MaximumUsernameLength } => $"Use at most {MaximumUsernameLength} characters.",
+        _ => null,
+    };
 
     private static async Task<string[]> ValidatePasswordAsync(
         UserManager<WeaponsOfOrderUser> users,

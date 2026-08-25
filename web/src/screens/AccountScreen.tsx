@@ -8,10 +8,12 @@ import { useSignOut } from "@/shell/useSignOut";
 /**
  * Account and settings.
  *
- * Everything on it comes from the session the server already publishes. There is no display
- * name, no avatar and no preferences, because none of those exist in the account schema, and
- * a settings screen that offers controls which change nothing is a worse answer than a short
- * one that says so.
+ * Everything on it comes from the session the server already publishes: the username the
+ * player is known by, the address the account is recovered through, and whether that address
+ * is confirmed. Nothing here is editable — there is no avatar, no display name separate from
+ * the username and no preferences, because none of those exist in the account schema, and a
+ * settings screen offering controls which change nothing is a worse answer than a short one
+ * that says so.
  *
  * It is also the phone's route to signing out. The bottom bar reaches it in one tap and the
  * action here is a full-width control, which is a better target than a popover hung off a
@@ -28,6 +30,7 @@ export function AccountScreen() {
     <ShellScreen title="Account" lead="The account that holds your forge.">
       <div className="flex max-w-[36rem] flex-col gap-10">
         <FactList>
+          <Fact label="Username">{account?.username}</Fact>
           <Fact label="Email">{account?.email}</Fact>
           <Fact label="Email confirmation">
             {account?.emailConfirmed ? "Confirmed" : "Not confirmed"}

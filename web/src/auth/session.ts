@@ -26,6 +26,8 @@ const sessionSchema = z.object({
   account: z
     .object({
       id: z.string(),
+      // The player-facing account identifier. `id` remains what the server keys ownership by.
+      username: z.string(),
       email: z.string(),
       emailConfirmed: z.boolean(),
     })
